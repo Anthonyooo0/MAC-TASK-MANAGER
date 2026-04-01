@@ -4,11 +4,12 @@ import TaskCard from './TaskCard';
 
 interface DelegationPanelProps {
   tasks: TaskData[];
+  users: { displayName: string; email: string }[];
   onEditTask: (taskId: string) => void;
   onDrop: (taskId: string) => void;
 }
 
-const DelegationPanel: React.FC<DelegationPanelProps> = ({ tasks, onEditTask, onDrop }) => {
+const DelegationPanel: React.FC<DelegationPanelProps> = ({ tasks, users, onEditTask, onDrop }) => {
   const [isHovering, setIsHovering] = React.useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -38,6 +39,7 @@ const DelegationPanel: React.FC<DelegationPanelProps> = ({ tasks, onEditTask, on
           <TaskCard
             key={task.id}
             task={task}
+            users={users}
             onClick={() => onEditTask(task.id)}
           />
         ))}

@@ -5,10 +5,11 @@ import { getPriorityLabel } from '../utils';
 interface TaskCardProps {
   task: TaskData;
   isGhost?: boolean;
+  users?: { displayName: string; email: string }[];
   onClick?: () => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, isGhost = false, onClick }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, isGhost = false, users = [], onClick }) => {
   const priLabel = getPriorityLabel(task.priority);
   const isCompleted = task.status === 'Completed';
 
@@ -45,7 +46,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isGhost = false, onClick }) =
       </small>
       {task.status === 'Delegated' && (
         <span className="delegation-tag">
-          Waiting on: {task.delegated || 'Unknown'}
+          Waiting on: {users.find(u => u.email === task.delegated)?.displayName || task.delegated || 'Unknown'}
         </span>
       )}
     </div>

@@ -6,6 +6,7 @@ interface TaskPanelProps {
   tasks: TaskData[];
   ghostTaskIds: Set<string>;
   sortMode: SortMode;
+  users: { displayName: string; email: string }[];
   onSortChange: (mode: SortMode) => void;
   onAddTask: () => void;
   onEditTask: (taskId: string) => void;
@@ -13,7 +14,7 @@ interface TaskPanelProps {
 }
 
 const TaskPanel: React.FC<TaskPanelProps> = ({
-  tasks, ghostTaskIds, sortMode, onSortChange, onAddTask, onEditTask, onDrop
+  tasks, ghostTaskIds, sortMode, users, onSortChange, onAddTask, onEditTask, onDrop
 }) => {
   const [isHovering, setIsHovering] = React.useState(false);
 
@@ -82,6 +83,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
               key={task.id + (isGhost ? '-ghost' : '')}
               task={task}
               isGhost={isGhost}
+              users={users}
               onClick={() => onEditTask(task.id)}
             />
           );

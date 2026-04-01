@@ -240,6 +240,7 @@ const App: React.FC = () => {
           tasks={notebookTasks}
           ghostTaskIds={ghostTaskIds}
           sortMode={sortMode}
+          users={users}
           onSortChange={setSortMode}
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
@@ -257,6 +258,7 @@ const App: React.FC = () => {
 
         <DelegationPanel
           tasks={delegationTasks}
+          users={users}
           onEditTask={handleEditTask}
           onDrop={handleDropToDelegation}
         />
