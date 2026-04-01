@@ -12,6 +12,8 @@ export interface CalendarMeeting {
   slots: number[];   // all slot indices it spans
   duration: string;
   timeLabel: string; // e.g. "12:00 PM - 5:00 PM"
+  topPercent: number;    // % offset from top of first slot row
+  heightPercent: number; // % of total spanned rows
 }
 
 interface CalendarMonitorProps {
@@ -146,14 +148,25 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                 return (
                   <div
                     key={meeting.id}
-                    className="meeting-span"
+                    className="meeting-span-wrapper"
                     style={{
                       gridRow: `${rowStart} / ${rowEnd}`,
                       gridColumn: col,
                     }}
                   >
-                    <strong>{meeting.title}</strong>
-                    <span className="meeting-time">{meeting.timeLabel}</span>
+                    <div
+                      className="meeting-span"
+                      style={{
+                        position: 'absolute',
+                        top: `${meeting.topPercent}%`,
+                        height: `${meeting.heightPercent}%`,
+                        left: '2px',
+                        right: '2px',
+                      }}
+                    >
+                      <strong>{meeting.title}</strong>
+                      <span className="meeting-time">{meeting.timeLabel}</span>
+                    </div>
                   </div>
                 );
               })}

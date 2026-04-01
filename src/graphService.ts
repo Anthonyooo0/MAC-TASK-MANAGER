@@ -66,7 +66,7 @@ function formatTime(date: Date): string {
 }
 
 /** Convert an Outlook event into day, slots it spans, and duration */
-export function mapEventToCalendarSlot(event: OutlookEvent): { day: number; startSlot: number; slots: number[]; duration: string; timeLabel: string } | null {
+export function mapEventToCalendarSlot(event: OutlookEvent): { day: number; startSlot: number; slots: number[]; duration: string; timeLabel: string; topPercent: number; heightPercent: number } | null {
   const start = new Date(event.start.dateTime + (event.start.timeZone === "UTC" ? "Z" : ""));
   const end = new Date(event.end.dateTime + (event.end.timeZone === "UTC" ? "Z" : ""));
 
@@ -95,7 +95,16 @@ export function mapEventToCalendarSlot(event: OutlookEvent): { day: number; star
   const duration = durationMin >= 60 ? `${(durationMin / 60).toFixed(1).replace('.0', '')}h` : `${durationMin}m`;
   const timeLabel = `${formatTime(start)} - ${formatTime(end)}`;
 
-  return { day, startSlot, slots, duration, timeLabel };
+  // Calculate vertical position within the spanned rows
+  const firstSlotStart = SLOT_BOUNDS[slots[0]].start;
+  const lastSlotEnd = SLOT_BOUNDS[slots[slots.length - 1]].end;
+  const totalSpanHours = lastSlotEnd - firstSlotStart;
+
+  const topPercent = ((startHour - firstSlotStart) / totalSpanHours) * 100;
+  const eventHours = endHour - startHour;
+  const heightPercent = (eventHours / totalSpanHours) * 100;
+
+  return { day, startSlot, slots, duration, timeLabel, topPercent, heightPercent };
 }
 
 /** Fetch all MAC Products users from the org directory */

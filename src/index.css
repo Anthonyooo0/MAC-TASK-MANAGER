@@ -193,11 +193,15 @@ body, html {
   position: relative;
 }
 
+.meeting-span-wrapper {
+  position: relative; z-index: 2; pointer-events: none;
+}
 .meeting-span {
   background: #e2f0fb; border-left: 4px solid #0984e3; border-radius: 4px;
-  padding: 6px 8px; margin: 2px; font-size: 0.75em; color: #0d3b84; font-weight: 700;
-  display: flex; flex-direction: column; gap: 2px; z-index: 2;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  padding: 6px 8px; font-size: 0.75em; color: #0d3b84; font-weight: 700;
+  display: flex; flex-direction: column; gap: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
+  pointer-events: auto;
 }
 .meeting-span strong { font-size: 0.85em; line-height: 1.2; }
 .meeting-span .meeting-time { font-size: 0.7em; font-weight: 600; opacity: 0.7; }
@@ -241,6 +245,20 @@ body, html {
 .modal-footer { padding: 15px 25px; border-top: 1px solid #eee; background: #fafafa; display: flex; justify-content: flex-end; border-radius: 0 0 12px 12px; }
 .btn-save { padding: 10px 20px; background: var(--ui-accent); border: none; color: white; font-weight: 600; cursor: pointer; border-radius: 6px; font-size: 0.9em; transition: 0.2s; }
 .btn-save:hover { background: #076ebf; }
+
+/* === User Search Dropdown === */
+.user-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+  background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 6px 6px;
+  max-height: 180px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.user-dropdown-item {
+  padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 1px;
+  transition: background 0.15s;
+}
+.user-dropdown-item:hover, .user-dropdown-item.active { background: #e2f0fb; }
+.user-dropdown-name { font-size: 0.85em; font-weight: 600; color: #2d3436; }
+.user-dropdown-email { font-size: 0.7em; color: #636e72; }
 
 /* === MAC Logo === */
 .mac-logo-container {

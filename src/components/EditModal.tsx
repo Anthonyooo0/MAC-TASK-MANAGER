@@ -6,6 +6,50 @@ export interface MacUser {
   email: string;
 }
 
+const UserSearchInput: React.FC<{
+  value: string;
+  users: MacUser[];
+  onChange: (val: string) => void;
+}> = ({ value, users, onChange }) => {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const selectedUser = users.find(u => u.email === value);
+  const displayValue = selectedUser ? `${selectedUser.displayName} (${selectedUser.email.split('@')[0]})` : search;
+
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    return u.displayName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  });
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={open ? search : displayValue}
+        placeholder="Search by name or email..."
+        onFocus={() => { setOpen(true); setSearch(''); }}
+        onChange={e => { setSearch(e.target.value); setOpen(true); if (!e.target.value) onChange(''); }}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+      />
+      {open && filtered.length > 0 && (
+        <div className="user-dropdown">
+          {filtered.map(u => (
+            <div
+              key={u.email}
+              className={`user-dropdown-item ${u.email === value ? 'active' : ''}`}
+              onMouseDown={() => { onChange(u.email); setSearch(''); setOpen(false); }}
+            >
+              <span className="user-dropdown-name">{u.displayName}</span>
+              <span className="user-dropdown-email">{u.email}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface EditModalProps {
   isOpen: boolean;
   task: TaskData | null;
@@ -144,16 +188,13 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
                 <option value="Completed">Completed</option>
               </select>
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label>Delegated To</label>
-              <select value={form.delegated || ''} onChange={e => set('delegated', e.target.value)}>
-                <option value="">-- Select User --</option>
-                {users.map(u => (
-                  <option key={u.email} value={u.email}>
-                    {u.displayName} ({u.email.split('@')[0]})
-                  </option>
-                ))}
-              </select>
+              <UserSearchInput
+                value={form.delegated || ''}
+                users={users}
+                onChange={val => set('delegated', val)}
+              />
             </div>
 
             <div className="section-title">Time Blocking & Dates</div>
