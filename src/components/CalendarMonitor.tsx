@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import type { TaskData } from '../types';
 import { schedule } from '../data/meetings';
 import { getWeekDates, parseDurationToMinutes } from '../utils';
-import TaskCard from './TaskCard';
+
 
 const SLOT_HOURS = [
   { start: 8, end: 9 },
@@ -13,17 +13,24 @@ const SLOT_HOURS = [
   { start: 15, end: 17 },
 ];
 
-function timeToHour(t: string): number {
-  const [h, m] = t.split(':').map(Number);
-  return h + m / 60;
-}
-
+/** Calculate task span from its drop slot + duration */
 function getTaskSpan(task: TaskData) {
-  if (!task.startTime || !task.endTime) return null;
-  const startH = timeToHour(task.startTime);
-  const endH = timeToHour(task.endTime);
-  if (endH <= startH) return null;
+  const dropSlot = task.calendarPosition?.slot;
+  if (dropSlot === undefined) return null;
 
+  // Parse duration to hours
+  const durStr = task.duration || '30m';
+  let durationHours = 0;
+  const hMatch = durStr.match(/(\d+(?:\.\d+)?)\s*h/i);
+  const mMatch = durStr.match(/(\d+)\s*m/i);
+  if (hMatch) durationHours += parseFloat(hMatch[1]);
+  if (mMatch) durationHours += parseInt(mMatch[1]) / 60;
+  if (durationHours === 0) durationHours = 0.5;
+
+  const startH = SLOT_HOURS[dropSlot].start;
+  const endH = startH + durationHours;
+
+  // Find all slots this task spans
   const slots: number[] = [];
   for (let i = 0; i < SLOT_HOURS.length; i++) {
     if (startH < SLOT_HOURS[i].end && endH > SLOT_HOURS[i].start) slots.push(i);
@@ -38,8 +45,17 @@ function getTaskSpan(task: TaskData) {
     startSlot: slots[0],
     slotCount: slots.length,
     topPercent: ((startH - firstStart) / totalH) * 100,
-    heightPercent: ((endH - startH) / totalH) * 100,
+    heightPercent: (Math.min(endH, lastEnd) - startH) / totalH * 100,
+    timeLabel: formatHour(startH) + ' - ' + formatHour(endH),
   };
+}
+
+function formatHour(h: number): string {
+  const hr = Math.floor(h);
+  const min = Math.round((h - hr) * 60);
+  const period = hr >= 12 ? 'PM' : 'AM';
+  const hr12 = hr > 12 ? hr - 12 : hr === 0 ? 12 : hr;
+  return `${hr12}:${min.toString().padStart(2, '0')} ${period}`;
 }
 
 export interface MeetingAttendee {
@@ -258,16 +274,6 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                     <span>{slot.label}</span>
                   </div>
                   {Array.from({ length: 5 }, (_, dayIndex) => {
-                    const tasksInSlot = calendarTasks.filter(
-                      t => t.calendarPosition?.week === activeWeek &&
-                        t.calendarPosition?.day === dayIndex &&
-                        t.calendarPosition?.slot === slotIndex
-                    );
-                    // Check if a meeting occupies this cell (to hide drop zone content behind it)
-                    const hasMeetingHere = outlookMeetings.some(
-                      m => m.day === dayIndex && m.slots.includes(slotIndex)
-                    );
-
                     return (
                       <DropZone
                         key={dayIndex}
@@ -275,15 +281,7 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                         slot={slotIndex}
                         style={{ gridRow: slotIndex + 1, gridColumn: dayIndex + 2 }}
                         onDrop={onDropToCalendar}
-                      >
-                        {!hasMeetingHere && tasksInSlot.map(task => (
-                          <TaskCard
-                            key={task.id}
-                            task={task}
-                            onClick={() => onEditTask(task.id)}
-                          />
-                        ))}
-                      </DropZone>
+                      />
                     );
                   })}
                 </React.Fragment>
@@ -309,11 +307,11 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                 );
               })}
 
-              {/* Spanning task overlays (tasks with start/end times) */}
-              {calendarTasks.filter(t => t.calendarPosition?.week === activeWeek && t.startTime && t.endTime).map(task => {
+              {/* Spanning task overlays based on duration */}
+              {calendarTasks.filter(t => t.calendarPosition?.week === activeWeek).map(task => {
                 const span = getTaskSpan(task);
-                if (!span || task.calendarPosition === undefined) return null;
-                const col = task.calendarPosition!.day + 2;
+                if (!span || !task.calendarPosition) return null;
+                const col = task.calendarPosition.day + 2;
                 const rowStart = span.startSlot + 1;
                 const rowEnd = rowStart + span.slotCount;
 
@@ -338,7 +336,7 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                       onClick={() => onEditTask(task.id)}
                     >
                       <strong>{task.title}</strong>
-                      <span className="meeting-time">{task.startTime} - {task.endTime}</span>
+                      <span className="meeting-time">{span.timeLabel} ({task.duration})</span>
                     </div>
                   </div>
                 );
@@ -358,7 +356,7 @@ const DropZone: React.FC<{
   slot: number;
   style: React.CSSProperties;
   onDrop: (taskId: string, day: number, slot: number) => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }> = ({ day, slot, style, onDrop, children }) => {
   const [isDragOver, setIsDragOver] = React.useState(false);
 
