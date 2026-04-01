@@ -1,5 +1,6 @@
 export interface TaskData {
   id: string;
+  userEmail?: string;
   title: string;
   category: 'project' | 'admin' | 'initiative' | 'activity';
   priority: 1 | 2 | 3;

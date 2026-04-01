@@ -1,13 +1,22 @@
 import React, { useMemo } from 'react';
 import type { TaskData } from '../types';
-import { presetMeetings, schedule } from '../data/meetings';
+import { schedule } from '../data/meetings';
 import { getWeekDates, parseDurationToMinutes } from '../utils';
 import TaskCard from './TaskCard';
+
+export interface CalendarMeeting {
+  id: string;
+  title: string;
+  day: number;   // 0=Mon, 4=Fri
+  slot: number;  // 0-5 matching schedule slots
+  duration: string;
+}
 
 interface CalendarMonitorProps {
   activeWeek: number;
   onWeekChange: (week: number) => void;
   calendarTasks: TaskData[];
+  outlookMeetings: CalendarMeeting[];
   onDropToCalendar: (taskId: string, day: number, slot: number) => void;
   onEditTask: (taskId: string) => void;
 }
@@ -15,11 +24,10 @@ interface CalendarMonitorProps {
 const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
 
 const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
-  activeWeek, onWeekChange, calendarTasks, onDropToCalendar, onEditTask
+  activeWeek, onWeekChange, calendarTasks, outlookMeetings, onDropToCalendar, onEditTask
 }) => {
   const weekDates = useMemo(() => getWeekDates(activeWeek), [activeWeek]);
 
-  // Current month name from the active week's Monday
   const monthLabel = useMemo(() => {
     const today = new Date();
     const currentDayIndex = today.getDay() || 7;
@@ -30,20 +38,17 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
     return mon.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }, [activeWeek]);
 
-  // Calculate saturation per day
   const saturationClasses = useMemo(() => {
     const classes: string[] = [];
     for (let day = 0; day < 5; day++) {
       let totalMinutes = 0;
-      // Count calendar tasks on this day
       calendarTasks.forEach(t => {
         if (t.calendarPosition?.week === activeWeek && t.calendarPosition?.day === day) {
           totalMinutes += parseDurationToMinutes(t.duration);
         }
       });
-      // Count preset meetings on this day
-      presetMeetings.forEach(m => {
-        if (m.week === activeWeek && m.day === day) {
+      outlookMeetings.forEach(m => {
+        if (m.day === day) {
           totalMinutes += parseDurationToMinutes(m.duration);
         }
       });
@@ -54,17 +59,15 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
       else classes.push('sat-high');
     }
     return classes;
-  }, [calendarTasks, activeWeek]);
+  }, [calendarTasks, outlookMeetings, activeWeek]);
 
   return (
     <div id="monitor-assembly">
       <div id="monitor">
         <div className="monitor-screen">
-          {/* Month Label */}
           <div className="month-label">
             {monthLabel}
           </div>
-          {/* Week Tabs */}
           <div className="week-tabs">
             {[1, 2, 3, 4].map(w => (
               <button
@@ -78,7 +81,6 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
           </div>
 
           <div className="calendar-container">
-            {/* Header */}
             <div className="calendar-header">
               <div>TIME</div>
               {DAY_NAMES.map((name, i) => (
@@ -89,7 +91,6 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
               ))}
             </div>
 
-            {/* Grid rows */}
             {schedule.map((slot, slotIndex) => (
               <div className="calendar-row" key={slotIndex}>
                 <div className="time-label">
@@ -98,8 +99,8 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                   <span>{slot.label}</span>
                 </div>
                 {Array.from({ length: 5 }, (_, dayIndex) => {
-                  const meeting = presetMeetings.find(
-                    m => m.week === activeWeek && m.day === dayIndex && m.slot === slotIndex
+                  const meetingsInSlot = outlookMeetings.filter(
+                    m => m.day === dayIndex && m.slot === slotIndex
                   );
                   const tasksInSlot = calendarTasks.filter(
                     t => t.calendarPosition?.week === activeWeek &&
@@ -114,11 +115,11 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                       slot={slotIndex}
                       onDrop={onDropToCalendar}
                     >
-                      {meeting && (
-                        <div className="preset-meeting" data-duration={meeting.duration}>
+                      {meetingsInSlot.map(meeting => (
+                        <div key={meeting.id} className="preset-meeting" data-duration={meeting.duration}>
                           {meeting.title}
                         </div>
-                      )}
+                      ))}
                       {tasksInSlot.map(task => (
                         <TaskCard
                           key={task.id}
@@ -140,7 +141,6 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
   );
 };
 
-// Drop zone sub-component
 const DropZone: React.FC<{
   day: number;
   slot: number;

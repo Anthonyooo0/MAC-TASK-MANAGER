@@ -30,3 +30,14 @@ export function getWeekDates(weekNum: number): string[] {
   }
   return days;
 }
+
+export function getWeekStartDate(weekNum: number): Date {
+  const today = new Date();
+  const currentDayIndex = today.getDay() || 7;
+  const startOfThisWeek = new Date(today);
+  startOfThisWeek.setDate(today.getDate() - currentDayIndex + 1);
+  const mon = new Date(startOfThisWeek);
+  mon.setDate(mon.getDate() + ((weekNum - 1) * 7));
+  mon.setHours(0, 0, 0, 0);
+  return mon;
+}

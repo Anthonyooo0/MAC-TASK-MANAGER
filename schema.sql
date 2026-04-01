@@ -2,6 +2,7 @@
 
 CREATE TABLE tasks (
   id            NVARCHAR(50) PRIMARY KEY,
+  user_email    NVARCHAR(255) NOT NULL,
   title         NVARCHAR(500) NOT NULL,
   category      NVARCHAR(50) NOT NULL,
   priority      INT NOT NULL DEFAULT 1,
@@ -26,6 +27,8 @@ CREATE TABLE tasks (
   calendar_slot INT NULL,
   created_at    DATETIME2 DEFAULT GETUTCDATE()
 );
+
+CREATE INDEX idx_tasks_user ON tasks (user_email);
 
 CREATE TABLE changelog (
   id          INT IDENTITY(1,1) PRIMARY KEY,

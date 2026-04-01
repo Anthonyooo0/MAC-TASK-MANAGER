@@ -1,4 +1,4 @@
-import { Configuration } from "@azure/msal-browser";
+import type { Configuration } from "@azure/msal-browser";
 
 export const msalConfig: Configuration = {
   auth: {
@@ -10,5 +10,6 @@ export const msalConfig: Configuration = {
   cache: { cacheLocation: "sessionStorage" },
 };
 
-export const loginRequest = { scopes: [] };
+export const loginRequest = { scopes: ["Calendars.Read"] };
+export const graphScopes = { scopes: ["Calendars.Read"] };
 export const ALLOWED_DOMAIN = "macproducts.net";
