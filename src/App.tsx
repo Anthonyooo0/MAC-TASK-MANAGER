@@ -13,11 +13,26 @@ const isDev = window.location.hostname === 'localhost';
 
 // Sample meetings for local dev
 const devMeetings: CalendarMeeting[] = [
-  { id: 'dev-1', title: 'Weekly Management Call', day: 0, startSlot: 0, slots: [0], duration: '1h', timeLabel: '8:00 AM - 9:00 AM', topPercent: 0, heightPercent: 100 },
-  { id: 'dev-2', title: 'MEKCO Follow-up Teams Mtg', day: 2, startSlot: 4, slots: [4], duration: '1h', timeLabel: '1:00 PM - 2:00 PM', topPercent: 0, heightPercent: 50 },
-  { id: 'dev-3', title: 'Acumatica Exec Demo', day: 3, startSlot: 2, slots: [2], duration: '1h', timeLabel: '11:00 AM - 12:00 PM', topPercent: 0, heightPercent: 100 },
-  { id: 'dev-4', title: 'GTA Renewal Meeting', day: 4, startSlot: 0, slots: [0, 1], duration: '3h', timeLabel: '8:00 AM - 11:00 AM', topPercent: 0, heightPercent: 100 },
-  { id: 'dev-5', title: "Anthony's Work Block", day: 1, startSlot: 3, slots: [3, 4, 5], duration: '5h', timeLabel: '12:00 PM - 5:00 PM', topPercent: 0, heightPercent: 100 },
+  { id: 'dev-1', title: 'Weekly Management Call', day: 0, startSlot: 0, slots: [0], duration: '1h', timeLabel: '8:00 AM - 9:00 AM', topPercent: 0, heightPercent: 100, location: 'Conference Room A', organizer: 'Edward Russnow', myResponse: 'accepted', isOnline: true, attendees: [
+    { name: 'Edward Russnow', email: 'edward.russnow@macproducts.net', response: 'organizer', type: 'required' },
+    { name: 'Anthony Jimenez', email: 'anthony.jimenez@macproducts.net', response: 'accepted', type: 'required' },
+    { name: 'Nick Costantino', email: 'nick.costantino@macproducts.net', response: 'accepted', type: 'required' },
+    { name: 'Gary Clarner', email: 'gary.clarner@macimpulse.net', response: 'tentativelyAccepted', type: 'optional' },
+  ] },
+  { id: 'dev-2', title: 'MEKCO Follow-up Teams Mtg', day: 2, startSlot: 4, slots: [4], duration: '1h', timeLabel: '1:00 PM - 2:00 PM', topPercent: 0, heightPercent: 50, location: 'Teams', organizer: 'Nick Costantino', myResponse: 'accepted', isOnline: true, attendees: [
+    { name: 'Nick Costantino', email: 'nick.costantino@macproducts.net', response: 'organizer', type: 'required' },
+    { name: 'Anthony Jimenez', email: 'anthony.jimenez@macproducts.net', response: 'accepted', type: 'required' },
+  ] },
+  { id: 'dev-3', title: 'Acumatica Exec Demo', day: 3, startSlot: 2, slots: [2], duration: '1h', timeLabel: '11:00 AM - 12:00 PM', topPercent: 0, heightPercent: 100, location: 'Board Room', organizer: 'Michelle Soares', myResponse: 'tentativelyAccepted', attendees: [
+    { name: 'Michelle Soares', email: 'michelle.soares@macproducts.net', response: 'organizer', type: 'required' },
+    { name: 'Anthony Jimenez', email: 'anthony.jimenez@macproducts.net', response: 'tentativelyAccepted', type: 'required' },
+    { name: 'Butch Campbell', email: 'butch.campbell@macimpulse.net', response: 'declined', type: 'optional' },
+  ] },
+  { id: 'dev-4', title: 'GTA Renewal Meeting', day: 4, startSlot: 0, slots: [0, 1], duration: '3h', timeLabel: '8:00 AM - 11:00 AM', topPercent: 0, heightPercent: 100, organizer: 'Anthony Jimenez', myResponse: 'organizer', isOnline: true, attendees: [
+    { name: 'Anthony Jimenez', email: 'anthony.jimenez@macproducts.net', response: 'organizer', type: 'required' },
+    { name: 'Edward Russnow', email: 'edward.russnow@macproducts.net', response: 'none', type: 'required' },
+  ] },
+  { id: 'dev-5', title: "Anthony's Work Block", day: 1, startSlot: 3, slots: [3, 4, 5], duration: '5h', timeLabel: '12:00 PM - 5:00 PM', topPercent: 0, heightPercent: 100, myResponse: 'accepted' },
 ];
 
 const App: React.FC = () => {

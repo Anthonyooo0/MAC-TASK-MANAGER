@@ -194,14 +194,17 @@ body, html {
 }
 
 .meeting-span-wrapper {
-  position: relative; z-index: 2; pointer-events: none;
+  position: relative; z-index: 10; pointer-events: none; overflow: visible;
+}
+.meeting-span-wrapper:hover {
+  z-index: 200;
 }
 .meeting-span {
   background: #e2f0fb; border-left: 4px solid #0984e3; border-radius: 4px;
   padding: 6px 8px; font-size: 0.75em; color: #0d3b84; font-weight: 700;
   display: flex; flex-direction: column; gap: 2px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
-  pointer-events: auto;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: visible;
+  pointer-events: auto; cursor: pointer;
 }
 .meeting-span strong { font-size: 0.85em; line-height: 1.2; }
 .meeting-span .meeting-time { font-size: 0.7em; font-weight: 600; opacity: 0.7; }
@@ -257,7 +260,7 @@ body, html {
 
 /* === Meeting Hover Tooltip === */
 .meeting-tooltip {
-  position: absolute; top: 100%; left: 0; z-index: 100; width: 280px;
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%); z-index: 200; width: 280px;
   background: white; border: 1px solid #e2e8f0; border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15); padding: 14px; margin-top: 4px;
   font-size: 12px; color: #2d3436; pointer-events: none;
