@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAC Task List Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Desk & Environment */
+            --desk-wood: #5c3a21;
+            --wall-color: #2b303a;
+            
+            /* Monitor Light Cream UI Colors */
+            --monitor-bg: #fdfbf7; 
+            --ui-text-main: #2d3436;
+            --ui-text-muted: #636e72;
+            --ui-accent: #0984e3;
+
+            /* Task Categories */
+            --project-color: #ff4757;
+            --admin-color: #1e90ff;
+            --initiative-color: #2ed573;
+            --activity-color: #9b59b6;
+
+            /* Saturation Colors */
+            --sat-none: #2d3436; 
+            --sat-low: #27ae60;  
+            --sat-med: #e67e22;  
+            --sat-high: #c0392b; 
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Inter', sans-serif; 
+            height: 100vh; width: 100vw;
+            overflow-x: auto; 
+            overflow-y: hidden;
+            background: var(--wall-color); color: var(--ui-text-main);
+        }
+
+        /* --- THE MAC LOGO --- */
+        .mac-logo-container {
+            position: absolute; top: 25px; left: 35px; z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mac-logo-img { height: 60px; object-fit: contain; }
+        .mac-logo-fallback { text-align: center; line-height: 0.9; color: #0d3b84; font-family: 'Inter', sans-serif;}
+        .mac-logo-fallback .mac-heavy { font-size: 55px; font-weight: 800; letter-spacing: -2px;}
+        .mac-logo-fallback .mac-light { font-size: 18px; font-weight: 300; letter-spacing: 2px;}
+
+        /* --- THE ROOM ENVIRONMENT --- */
+        .wall {
+            position: absolute; top: 0; left: 0; width: 100vw; min-width: 1400px; height: 75vh; 
+            background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover; background-position: center 30%; z-index: 1;
+        }
+        .wall::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 50%); pointer-events: none;
+        }
+        .desk-surface {
+            position: absolute; bottom: 0; left: 0; right: 0; width: 100vw; min-width: 1400px; height: 25vh; 
+            background-color: var(--desk-wood);
+            background-image: 
+                linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 15%), 
+                repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 8px);
+            border-top: 10px solid #2e1c0d; box-shadow: inset 0 60px 80px rgba(0,0,0,0.6); z-index: 2;
+        }
+
+        .workspace {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100vh; min-width: 1400px;
+            display: flex; align-items: flex-end; justify-content: center; gap: 20px;
+            padding-bottom: 4vh; padding-left: 20px; padding-right: 20px; 
+            box-sizing: border-box; z-index: 10;
+        }
+
+        /* --- SIDE PANELS --- */
+        .side-panel {
+            width: 270px; height: 60vh; background: #ffffff;
+            box-shadow: -5px 0 10px rgba(0,0,0,0.1), 20px 30px 50px rgba(0,0,0,0.6);
+            position: relative; display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        
+        #task-panel { border-radius: 4px 15px 15px 4px; border-left: 25px solid #1a252c; padding: 15px 15px 15px 20px; }
+        #delegation-panel { border-radius: 15px 4px 4px 15px; border-right: 25px solid #2980b9; padding: 15px 20px 15px 15px; background: #f8f9fa; }
+
+        .side-panel h2 {
+            margin-top: 0; margin-bottom: 10px; color: var(--ui-text-main); font-size: 1.05em; font-weight: 700;
+            text-align: center; letter-spacing: -0.2px; border-bottom: 2px dashed #dfe6e9; padding-bottom: 12px;
+        }
+
+        .panel-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 5px; padding-bottom: 12px; border-bottom: 2px dashed #dfe6e9; }
+        .btn-add-task {
+            background: var(--ui-accent); color: white; border: none; padding: 8px; border-radius: 6px;
+            font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: 0.2s;
+            box-shadow: 0 2px 5px rgba(9, 132, 227, 0.3); font-size: 0.9em;
+        }
+        .btn-add-task:hover { background: #076ebf; transform: translateY(-1px); }
+
+        .sort-controls { display: flex; align-items: center; justify-content: space-between; }
+        .sort-controls label { font-size: 0.75em; font-weight: 600; color: var(--ui-text-muted); }
+        .sort-controls select { padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 0.75em; color: var(--ui-text-main); background: #fff; cursor: pointer; transition: 0.2s; }
+
+        /* --- THE FIX: ADDED PADDING TO PREVENT BADGE CLIPPING --- */
+        .task-list-container { 
+            flex-grow: 1; overflow-y: auto; 
+            padding: 10px 10px 10px 5px; /* Added 10px Top and Right padding */
+            transition: all 0.3s ease; border-radius: 8px; 
+        }
+        
+        .return-hover { background: rgba(46, 213, 115, 0.08); box-shadow: inset 0 0 15px rgba(46, 213, 115, 0.2); border: 2px dashed rgba(46, 213, 115, 0.5); }
+
+        /* --- TASKS --- */
+        .task {
+            background: #fff; padding: 10px; margin-bottom: 12px; border-radius: 6px;
+            cursor: grab; box-shadow: 0 3px 6px rgba(0,0,0,0.08); 
+            border-left: 6px solid #ccc; border-top: 1px solid #f1f2f6; border-right: 1px solid #f1f2f6; border-bottom: 1px solid #f1f2f6;
+            position: relative; transition: opacity 0.2s, transform 0.1s; font-size: 0.8em; line-height: 1.3;
+        }
+        
+        .task small { color: var(--ui-text-muted); font-size: 0.8em; display: block; margin-top: 4px; line-height: 1.3; }
+        .delegation-tag { color: #c0392b; font-weight: 700; display: block; margin-top: 4px; }
+
+        .task[data-category="project"] { border-left-color: var(--project-color); }
+        .task[data-category="admin"] { border-left-color: var(--admin-color); }
+        .task[data-category="initiative"] { border-left-color: var(--initiative-color); }
+        .task[data-category="activity"] { border-left-color: var(--activity-color); }
+
+        .task .priority { 
+            position: absolute; top: -8px; right: -6px; /* Pops out of the card slightly */
+            font-size: 0.7em; font-weight: 700; color: white; padding: 3px 6px; 
+            border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
+        }
+        .pri-3 { background: #e74c3c; } .pri-2 { background: #f39c12; } .pri-1 { background: #3498db; }
+        
+        .task-list-container .task { animation: antigravity 3.5s ease-in-out infinite alternate; }
+        .task-list-container .task:nth-child(even) { animation-delay: 0.5s; }
+        .task-list-container .task:nth-child(odd) { animation-delay: 1.2s; }
+
+        .task.allocated { opacity: 0.3 !important; filter: grayscale(100%); pointer-events: none; animation: none !important; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); transform: translateY(0); }
+        .task.completed { opacity: 0.5 !important; animation: none !important; background: #f8f9fa; border-left-color: #bdc3c7 !important; }
+        .task.completed strong { text-decoration: line-through; color: #7f8c8d; }
+        .task.completed .priority { background: #95a5a6; }
+
+        .drop-zone .task { padding: 6px; margin-bottom: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.15); animation: none; transform: none; border-radius: 4px; border-left-width: 5px; font-size: 0.8em; }
+        .drop-zone .task:hover { transform: scale(1.02); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .drop-zone .task br, .drop-zone .task small, .drop-zone .task .priority, .drop-zone .task .delegation-tag { display: none; } 
+        .drop-zone .task strong { font-size: 0.9em; color: var(--ui-text-main); font-weight: 600; text-decoration: none;}
+
+        @keyframes antigravity {
+            0% { transform: translateY(0px) rotate(0deg); box-shadow: 0 3px 6px rgba(0,0,0,0.08); }
+            100% { transform: translateY(-5px) rotate(1deg); box-shadow: 0 8px 15px rgba(0,0,0,0.12); }
+        }
+
+        /* --- PRESET MEETINGS IN CALENDAR --- */
+        .preset-meeting {
+            background: #e2f0fb; border-left: 4px solid #0984e3; border-radius: 4px;
+            padding: 4px 6px; margin-bottom: 4px; font-size: 0.75em; color: #0d3b84; font-weight: 700;
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.05); cursor: not-allowed;
+        }
+
+        /* --- CHROME MONITOR --- */
+        #monitor-assembly { flex-grow: 1; display: flex; flex-direction: column; align-items: center; position: relative; min-width: 750px; max-width: 1000px; }
+        
+        #monitor { 
+            width: 100%; height: 60vh; 
+            background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 15%, #b3b3b3 35%, #e6e6e6 50%, #ffffff 65%, #8c8c8c 100%);
+            padding: 14px 14px 28px 14px; border-radius: 12px; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 0 4px rgba(255,255,255,1); 
+            display: flex; flex-direction: column; position: relative; z-index: 3; 
+        }
+
+        .monitor-screen {
+            flex-grow: 1; display: flex; flex-direction: column; background: var(--monitor-bg);
+            border-radius: 6px; overflow: hidden; border: 2px solid #222; box-shadow: inset 0 0 15px rgba(0,0,0,0.05);
+        }
+
+        .stand-neck { width: 110px; height: 35px; background: linear-gradient(to right, #8a8d91, #ffffff, #8a8d91); box-shadow: inset 0 10px 15px rgba(0,0,0,0.2); z-index: 2; }
+        .stand-base { width: 340px; height: 14px; background: linear-gradient(to right, #a1a3a6, #ffffff, #a1a3a6); border-radius: 8px 8px 0 0; border-bottom: 4px solid #6b6c6e; box-shadow: 0 25px 35px rgba(0,0,0,0.4); z-index: 2; }
+
+        .week-tabs { display: flex; background: #ebe9e4; padding: 8px 15px 0; border-bottom: 1px solid #dcdde1; }
+        .tab { padding: 8px 20px; background: #dad8d2; color: #636e72; border-radius: 6px 6px 0 0; margin-right: 5px; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 0.8em; }
+        .tab.active { background: var(--monitor-bg); color: var(--ui-text-main); box-shadow: 0 -2px 10px rgba(0,0,0,0.03); }
+
+        .calendar-container { flex-grow: 1; background: var(--monitor-bg); display: flex; flex-direction: column; padding: 10px; overflow-y: auto; }
+        
+        .calendar-header { display: grid; grid-template-columns: 80px repeat(5, 1fr); gap: 6px; margin-bottom: 6px; text-align: center; font-weight: 800; letter-spacing: 0.5px; font-size: 0.75em; }
+        .calendar-header > div { transition: color 0.3s ease; padding-bottom: 5px; border-bottom: 3px solid transparent;}
+        .calendar-header .sat-none { color: var(--sat-none); }
+        .calendar-header .sat-low { color: var(--sat-low); border-bottom-color: var(--sat-low);}
+        .calendar-header .sat-med { color: var(--sat-med); border-bottom-color: var(--sat-med);}
+        .calendar-header .sat-high { color: var(--sat-high); border-bottom-color: var(--sat-high);}
+        .calendar-header .date-sub { display: block; font-size: 0.85em; font-weight: 600; margin-top: 2px; color: inherit; opacity: 0.8;}
+
+        /* --- ALTERNATING CALENDAR ROWS --- */
+        .calendar-row { 
+            display: grid; grid-template-columns: 80px repeat(5, 1fr); gap: 6px; 
+            margin-bottom: 8px; min-height: 72px; border-radius: 8px; padding: 6px;
+        }
+        .calendar-row:nth-child(odd) { background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .calendar-row:nth-child(even) { background: #f4f5f7; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .calendar-row:nth-child(4) { background: #e2e6ea; box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); } /* Lunch */
+
+        .time-label { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; padding-right: 10px; font-size: 0.7em; color: var(--ui-text-muted); text-align: right; border-right: 2px solid #ced6e0; font-weight: 500; }
+        .time-label span { font-size: 0.85em; color: var(--ui-accent); margin-top: 4px; text-transform: uppercase; font-weight: 700;}
+
+        .drop-zone { background: transparent; border: 1px dashed #b2bec3; border-radius: 6px; padding: 4px; display: flex; flex-direction: column; gap: 4px; transition: 0.2s; box-sizing: border-box; min-height: 100%; }
+        .drop-zone.drag-over { background: rgba(46, 213, 115, 0.1) !important; border-color: #2ed573; box-shadow: inset 0 0 10px rgba(46, 213, 115, 0.2); }
+
+        /* --- MODAL --- */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 999; backdrop-filter: blur(3px); }
+        #edit-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98); padding: 0; border-radius: 12px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4); z-index: 1000; width: 650px; max-width: 95vw;
+            max-height: 90vh; flex-direction: column; overflow: hidden; border: 1px solid rgba(0,0,0,0.1);
+        }
+        .modal-header { padding: 15px 25px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fafafa; }
+        .modal-header h3 { margin: 0; color: var(--ui-text-main); font-weight: 700; font-size: 1.1em; }
+        .modal-close { cursor: pointer; background: none; border: none; font-size: 1.5em; color: #aaa; transition: 0.2s; }
+        .modal-close:hover { color: #ff4757; }
+
+        .modal-body { padding: 20px 25px; overflow-y: auto; flex-grow: 1; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin-bottom: 10px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: span 2; }
+        .form-group label { font-size: 0.75em; color: var(--ui-text-muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;}
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: 'Inter', sans-serif; 
+            font-size: 0.85em; color: var(--ui-text-main); background: #fff; transition: 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--ui-accent); outline: none; box-shadow: 0 0 0 3px rgba(9, 132, 227, 0.1); }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+        .section-title { grid-column: span 2; font-size: 0.85em; font-weight: 700; color: var(--ui-text-main); border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 10px; margin-bottom: -5px; }
+
+        .modal-footer { padding: 15px 25px; border-top: 1px solid #eee; background: #fafafa; display: flex; justify-content: flex-end; }
+        .btn-save { padding: 10px 20px; background: var(--ui-accent); border: none; color: white; font-weight: 600; cursor: pointer; border-radius: 6px; font-size: 0.9em; transition: 0.2s;}
+        .btn-save:hover { background: #076ebf; }
+    </style>
+</head>
+<body>
+
+    <!-- MAC Corporate Logo -->
+    <div class="mac-logo-container">
+        <img src="mac-logo.jpg" alt="MAC Products" class="mac-logo-img" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';">
+        <div id="logo-fallback" class="mac-logo-fallback" style="display:none;">
+            <span class="mac-heavy">MAC</span><br><span class="mac-light">PRODUCTS</span>
+        </div>
+    </div>
+
+    <!-- Environment Background -->
+    <div class="wall"></div>
+    <div class="desk-surface"></div>
+
+    <!-- Interactive Layer -->
+    <div class="workspace">
+        
+        <!-- LEFT PANEL: NOTEBOOK (MY TASKS) -->
+        <div id="task-panel" class="side-panel">
+            <h2>MAC Task List Manager</h2>
+            
+            <div class="panel-actions">
+                <button class="btn-add-task" onclick="openNewTaskModal()">+ Add New Task</button>
+                <div class="sort-controls">
+                    <label>Sort By:</label>
+                    <select id="sort-tasks" onchange="sortTasks()">
+                        <option value="default">Default</option>
+                        <option value="priority-desc">Priority (High - Low)</option>
+                        <option value="priority-asc">Priority (Low - High)</option>
+                        <option value="source">Source (A - Z)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- PRE-LOADED DATA DRIVEN TASK LIST -->
+            <div class="task-list-container" id="notebook-zone">
+                
+                <!-- Juan Ortiz Only — Teams Request Tracker -->
+                <div class="task" draggable="true" id="t-001" data-category="admin" data-priority="2" data-status="Not Started" data-duration="1h" data-source="Teams Mgmt Call">
+                    <span class="priority pri-2">Med</span><strong>Address sewer / facilities misuse</strong><br>
+                    <small>Cat: Admin | Source: Teams Mgmt Call<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-002" data-category="project" data-priority="2" data-status="Not Started" data-duration="1h" data-source="Teams Mgmt Call">
+                    <span class="priority pri-2">Med</span><strong>Share ops data with NJ staff</strong><br>
+                    <small>Cat: Project | Source: Teams Mgmt Call<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-003" data-category="activity" data-priority="2" data-status="Not Started" data-duration="1.5h" data-source="Teams Mgmt Call">
+                    <span class="priority pri-2">Med</span><strong>Offline ops/finance data sessions</strong><br>
+                    <small>Cat: Activity | Source: Teams Mgmt Call<br>Est: 1.5h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-004" data-category="initiative" data-priority="3" data-status="Not Started" data-duration="2h" data-source="Teams Mgmt Call">
+                    <span class="priority pri-3">High</span><strong>Prepare tariff response strategy</strong><br>
+                    <small>Cat: Initiative | Source: Teams Mgmt Call<br>Est: 2h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-005" data-category="admin" data-priority="3" data-status="Not Started" data-duration="30m" data-source="Teams Mgmt Call">
+                    <span class="priority pri-3">High</span><strong>Escalate tariff recovery / rebate</strong><br>
+                    <small>Cat: Admin | Source: Teams Mgmt Call<br>Est: 30m | Due: Ongoing</small>
+                </div>
+
+                <!-- Edward Russnow emails – Matrix -->
+                <div class="task" draggable="true" id="t-006" data-category="project" data-priority="3" data-status="Not Started" data-duration="3h" data-source="E. Russnow Email">
+                    <span class="priority pri-3">High</span><strong>Tariff impact analysis (open POs+forecast)</strong><br>
+                    <small>Cat: Project | Source: E. Russnow Email<br>Est: 3h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-007" data-category="admin" data-priority="2" data-status="Not Started" data-duration="30m" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Status update on tariff forecast</strong><br>
+                    <small>Cat: Admin | Source: E. Russnow Email<br>Est: 30m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-008" data-category="admin" data-priority="2" data-status="Not Started" data-duration="1h" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Product class descriptions to ETO reports</strong><br>
+                    <small>Cat: Admin | Source: E. Russnow Email<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-009" data-category="activity" data-priority="1" data-status="Not Started" data-duration="30m" data-source="E. Russnow Email">
+                    <span class="priority pri-1">Low</span><strong>Clarify "99-Other" vs "20-Other"</strong><br>
+                    <small>Cat: Activity | Source: E. Russnow Email<br>Est: 30m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-010" data-category="admin" data-priority="2" data-status="Not Started" data-duration="15m" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Schedule ETO findings review</strong><br>
+                    <small>Cat: Admin | Source: E. Russnow Email<br>Est: 15m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-011" data-category="initiative" data-priority="3" data-status="Not Started" data-duration="1h" data-source="E. Russnow Email">
+                    <span class="priority pri-3">High</span><strong>Update Angel C. Leon dev plan/training</strong><br>
+                    <small>Cat: Initiative | Source: E. Russnow Email<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-012" data-category="admin" data-priority="2" data-status="Not Started" data-duration="30m" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Confirm mentorship resources for Angel</strong><br>
+                    <small>Cat: Admin | Source: E. Russnow Email<br>Est: 30m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-013" data-category="project" data-priority="3" data-status="Not Started" data-duration="1.5h" data-source="E. Russnow Email">
+                    <span class="priority pri-3">High</span><strong>Concur AP automation & Acumatica integration</strong><br>
+                    <small>Cat: Project | Source: E. Russnow Email<br>Est: 1.5h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-014" data-category="project" data-priority="2" data-status="Not Started" data-duration="1h" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Explain SMART Team feedback loop</strong><br>
+                    <small>Cat: Project | Source: E. Russnow Email<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-015" data-category="admin" data-priority="2" data-status="Not Started" data-duration="45m" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>SMART Team hours & cost recovery approach</strong><br>
+                    <small>Cat: Admin | Source: E. Russnow Email<br>Est: 45m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-016" data-category="admin" data-priority="2" data-status="Not Started" data-duration="30m" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Doc storage & access for SMART Team</strong><br>
+                    <small>Cat: Admin | Source: E. Russnow Email<br>Est: 30m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-017" data-category="project" data-priority="3" data-status="Not Started" data-duration="1h" data-source="E. Russnow Email">
+                    <span class="priority pri-3">High</span><strong>Align AAP Cast Lugs inventory</strong><br>
+                    <small>Cat: Project | Source: E. Russnow Email<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-018" data-category="initiative" data-priority="2" data-status="Not Started" data-duration="2h" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>AI agent for Cost of Poor Quality</strong><br>
+                    <small>Cat: Initiative | Source: E. Russnow Email<br>Est: 2h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-019" data-category="project" data-priority="2" data-status="Not Started" data-duration="2h" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Field Services analysis (hrs paid vs billed)</strong><br>
+                    <small>Cat: Project | Source: E. Russnow Email<br>Est: 2h | Due: None</small>
+                </div>
+
+                <!-- Management Call Actions -->
+                <div class="task" draggable="true" id="t-020" data-category="project" data-priority="3" data-status="Not Started" data-duration="2h" data-source="Mgmt Call (Nick/Juan)">
+                    <span class="priority pri-3">High</span><strong>Provide budgeting info on all topics</strong><br>
+                    <small>Cat: Project | Source: Mgmt Call<br>Est: 2h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-021" data-category="activity" data-priority="3" data-status="Not Started" data-duration="1h" data-source="Mgmt Call (Nick)">
+                    <span class="priority pri-3">High</span><strong>Deliver budget info today (despite weather)</strong><br>
+                    <small>Cat: Activity | Source: Mgmt Call<br>Est: 1h | Due: Today</small>
+                </div>
+                <div class="task" draggable="true" id="t-022" data-category="admin" data-priority="2" data-status="Not Started" data-duration="30m" data-source="Mgmt Call (Nick/Gary)">
+                    <span class="priority pri-2">Med</span><strong>Confirm weekly shipping schedule pres.</strong><br>
+                    <small>Cat: Admin | Source: Mgmt Call<br>Est: 30m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-023" data-category="project" data-priority="3" data-status="Not Started" data-duration="3h" data-source="Mgmt Call (Ops/Juan)">
+                    <span class="priority pri-3">High</span><strong>Analyze $2.8M backlog / recovery plan</strong><br>
+                    <small>Cat: Project | Source: Mgmt Call<br>Est: 3h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-024" data-category="initiative" data-priority="2" data-status="Not Started" data-duration="1h" data-source="Mgmt Call (Nick/Butch)">
+                    <span class="priority pri-2">Med</span><strong>Tighten weekly shipping forecasts</strong><br>
+                    <small>Cat: Initiative | Source: Mgmt Call<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-025" data-category="activity" data-priority="2" data-status="Not Started" data-duration="1h" data-source="Mgmt Call (Butch/Juan)">
+                    <span class="priority pri-2">Med</span><strong>Share on-time delivery & backlog with staff</strong><br>
+                    <small>Cat: Activity | Source: Mgmt Call<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-026" data-category="admin" data-priority="2" data-status="Not Started" data-duration="1h" data-source="Mgmt Call (Mike U.)">
+                    <span class="priority pri-2">Med</span><strong>Kick off Feb shipping results review</strong><br>
+                    <small>Cat: Admin | Source: Mgmt Call<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-027" data-category="admin" data-priority="2" data-status="Not Started" data-duration="30m" data-source="Mgmt Call (Henry R.)">
+                    <span class="priority pri-2">Med</span><strong>Share Mass Electric presentation draft</strong><br>
+                    <small>Cat: Admin | Source: Mgmt Call<br>Est: 30m | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-028" data-category="admin" data-priority="2" data-status="Not Started" data-duration="15m" data-source="Mgmt Call (Henry R.)">
+                    <span class="priority pri-2">Med</span><strong>Send inventory notes to Henry</strong><br>
+                    <small>Cat: Admin | Source: Mgmt Call<br>Est: 15m | Due: None</small>
+                </div>
+
+                <!-- Request Matrix -->
+                <div class="task" draggable="true" id="t-029" data-category="initiative" data-priority="3" data-status="Not Started" data-duration="3h" data-source="David Zuercher">
+                    <span class="priority pri-3">High</span><strong>Capacity Plan for Concurrent Vault Orders</strong><br>
+                    <small>Cat: Initiative | Source: David Zuercher<br>Est: 3h | Due: Q2</small>
+                </div>
+                <div class="task" draggable="true" id="t-030" data-category="admin" data-priority="2" data-status="Not Started" data-duration="1h" data-source="Michael Betti">
+                    <span class="priority pri-2">Med</span><strong>GTA Renewal Meeting</strong><br>
+                    <small>Cat: Admin | Source: Michael Betti<br>Est: 1h | Due: &lt; 2 Weeks</small>
+                </div>
+                <div class="task" draggable="true" id="t-031" data-category="project" data-priority="2" data-status="Not Started" data-duration="2h" data-source="Geoffrey Ocampo">
+                    <span class="priority pri-2">Med</span><strong>138kV Roof Slab Coord. with Flatworld</strong><br>
+                    <small>Cat: Project | Source: Geoffrey Ocampo<br>Est: 2h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-032" data-category="admin" data-priority="2" data-status="Not Started" data-duration="1.5h" data-source="Gabriel Noriega">
+                    <span class="priority pri-2">Med</span><strong>CNC Staffing Analysis Template</strong><br>
+                    <small>Cat: Admin | Source: Gabriel Noriega<br>Est: 1.5h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-033" data-category="initiative" data-priority="3" data-status="Not Started" data-duration="1h" data-source="Audrey Idom">
+                    <span class="priority pri-3">High</span><strong>Acumatica Proposal Executive Review</strong><br>
+                    <small>Cat: Initiative | Source: Audrey Idom<br>Est: 1h | Due: Tomorrow</small>
+                </div>
+                <div class="task" draggable="true" id="t-034" data-category="activity" data-priority="2" data-status="Not Started" data-duration="1h" data-source="Adam Schneider">
+                    <span class="priority pri-2">Med</span><strong>MAC/MEKCO Follow-Up Teams Mtg</strong><br>
+                    <small>Cat: Activity | Source: Adam Schneider<br>Est: 1h | Due: Week of Mar 10</small>
+                </div>
+                <div class="task" draggable="true" id="t-035" data-category="project" data-priority="2" data-status="Not Started" data-duration="1h" data-source="William Koch">
+                    <span class="priority pri-2">Med</span><strong>Clarify Safety Stock File Ownership</strong><br>
+                    <small>Cat: Project | Source: William Koch<br>Est: 1h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-036" data-category="activity" data-priority="2" data-status="Not Started" data-duration="30m" data-source="William Koch">
+                    <span class="priority pri-2">Med</span><strong>Align SO 174571 Cleveland RTA</strong><br>
+                    <small>Cat: Activity | Source: William Koch<br>Est: 30m | Due: Jul 27, 2026</small>
+                </div>
+                <div class="task" draggable="true" id="t-037" data-category="activity" data-priority="3" data-status="Not Started" data-duration="1.5h" data-source="Read AI (Eddie Call)">
+                    <span class="priority pri-3">High</span><strong>Safety Walk & Policy Coverage Check</strong><br>
+                    <small>Cat: Activity | Source: Read AI (Eddie Call)<br>Est: 1.5h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-038" data-category="admin" data-priority="2" data-status="Not Started" data-duration="2h" data-source="Read AI (Eddie Call)">
+                    <span class="priority pri-2">Med</span><strong>Mgmt Call Operational Follow-ups</strong><br>
+                    <small>Cat: Admin | Source: Read AI (Eddie Call)<br>Est: 2h | Due: Rolling</small>
+                </div>
+
+                <!-- Eddie's Custom List -->
+                <div class="task" draggable="true" id="t-039" data-category="project" data-priority="2" data-status="Not Started" data-duration="2h" data-source="Eddie List">
+                    <span class="priority pri-2">Med</span><strong>Godfrey/George/Winsley Legacy</strong><br>
+                    <small>Cat: Project | Source: Eddie<br>Est: 2h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-040" data-category="initiative" data-priority="3" data-status="Not Started" data-duration="2h" data-source="Eddie List">
+                    <span class="priority pri-3">High</span><strong>Contingency Planning</strong><br>
+                    <small>Cat: Initiative | Source: Eddie<br>Est: 2h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-041" data-category="project" data-priority="3" data-status="Not Started" data-duration="3h" data-source="Eddie List">
+                    <span class="priority pri-3">High</span><strong>Capacity Improvements CAPEX Analysis</strong><br>
+                    <small>Cat: Project | Source: Eddie<br>Est: 3h | Due: None</small>
+                </div>
+                <div class="task" draggable="true" id="t-042" data-category="initiative" data-priority="3" data-status="Not Started" data-duration="2.5h" data-source="Eddie List">
+                    <span class="priority pri-3">High</span><strong>Finalize Engineering Restructuring</strong><br>
+                    <small>Cat: Initiative | Source: Eddie<br>Est: 2.5h | Due: None</small>
+                </div>
+
+                <!-- PRE-COMPLETED TASKS -->
+                <div class="task completed" draggable="true" id="t-043" data-category="admin" data-priority="1" data-status="Completed" data-duration="30m" data-source="E. Russnow Email">
+                    <span class="priority pri-1">Low</span><strong>Secure CNC Skills Matrix</strong><br>
+                    <small>Cat: Admin | Status: Completed</small>
+                </div>
+                <div class="task completed" draggable="true" id="t-044" data-category="activity" data-priority="1" data-status="Completed" data-duration="30m" data-source="E. Russnow Email">
+                    <span class="priority pri-1">Low</span><strong>Feedback on Jhonny Discussion</strong><br>
+                    <small>Cat: Activity | Status: Completed</small>
+                </div>
+                <div class="task completed" draggable="true" id="t-045" data-category="initiative" data-priority="2" data-status="Completed" data-duration="1h" data-source="E. Russnow Email">
+                    <span class="priority pri-2">Med</span><strong>Review Product Class Updates</strong><br>
+                    <small>Cat: Initiative | Status: Completed</small>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- CENTER PANEL: CHROME MONITOR CALENDAR -->
+        <div id="monitor-assembly">
+            <div id="monitor">
+                <div class="monitor-screen">
+                    <div class="week-tabs">
+                        <div class="tab active" id="tab-1" onclick="switchWeek(1)">Week 1</div>
+                        <div class="tab" id="tab-2" onclick="switchWeek(2)">Week 2</div>
+                        <div class="tab" id="tab-3" onclick="switchWeek(3)">Week 3</div>
+                        <div class="tab" id="tab-4" onclick="switchWeek(4)">Week 4</div>
+                    </div>
+                    
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <div>TIME</div>
+                            <div id="day-0" class="sat-none">MONDAY<span class="date-sub"></span></div>
+                            <div id="day-1" class="sat-none">TUESDAY<span class="date-sub"></span></div>
+                            <div id="day-2" class="sat-none">WEDNESDAY<span class="date-sub"></span></div>
+                            <div id="day-3" class="sat-none">THURSDAY<span class="date-sub"></span></div>
+                            <div id="day-4" class="sat-none">FRIDAY<span class="date-sub"></span></div>
+                        </div>
+                        <div id="calendar-grids"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="stand-neck"></div><div class="stand-base"></div>
+        </div>
+
+        <!-- RIGHT PANEL: DELEGATION OUTBOX -->
+        <div id="delegation-panel" class="side-panel">
+            <h2>Delegated Outbox</h2>
+            <div class="task-list-container" id="delegation-zone">
+                <!-- Drop tasks here to automatically delegate -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BULLETPROOF EDIT MODAL -->
+    <div id="modal-overlay" onclick="closeModal()"></div>
+    <div id="edit-modal">
+        <div class="modal-header">
+            <h3 id="modal-main-title">Task Details Dashboard</h3>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Task Title</label>
+                    <input type="text" id="edit-title" placeholder="Enter task name...">
+                </div>
+
+                <div class="section-title">Context & Status</div>
+                <div class="form-group"><label>Category</label><select id="edit-category"><option value="project">Project</option><option value="admin">Admin</option><option value="initiative">Initiative</option><option value="activity">Activity</option></select></div>
+                <div class="form-group"><label>Priority Level</label><select id="edit-priority"><option value="3">High</option><option value="2">Medium</option><option value="1">Low</option></select></div>
+                
+                <div class="form-group"><label>Current Status</label>
+                    <select id="edit-status">
+                        <option value="Not Started">Not Started</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Delegated">Delegated (Moves to Outbox)</option>
+                        <option value="Waiting on Someone">Waiting on Blockers</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Delegated To</label><input type="text" id="edit-delegated" placeholder="Name or Team..."></div>
+
+                <div class="section-title">Time Blocking & Dates</div>
+                <div class="form-group"><label>Energy Required</label><select id="edit-energy"><option value="High Focus">High Focus</option><option value="Collaborative">Collaborative</option><option value="Routine Admin">Routine Admin</option></select></div>
+                <div class="form-group"><label>Est. Duration</label><input type="text" id="edit-duration" placeholder="e.g., 30m, 1h, 2.5h"></div>
+                <div class="form-group"><label>Source / Channel</label><input type="text" id="edit-source" placeholder="e.g., Email, Slack, Meeting"></div>
+                <div class="form-group"><label>Requester</label><input type="text" id="edit-requester" placeholder="Who asked for this?"></div>
+                <div class="form-group"><label>Received Date</label><input type="date" id="edit-received"></div>
+                <div class="form-group"><label>Due Date</label><input type="text" id="edit-due" placeholder="e.g. Jul 27, 2026 or Friday"></div>
+                
+                <div class="form-group"><label>Start Date</label><input type="date" id="edit-start"></div>
+                <div class="form-group"><label>Waiting On (Blocker)</label><input type="text" id="edit-waiting" placeholder="Who/what are you waiting for?"></div>
+
+                <div class="section-title">Actionability & Execution</div>
+                <div class="form-group"><label>Parent Goal / Sub-Project</label><input type="text" id="edit-parent" placeholder="What bigger initiative is this tied to?"></div>
+                <div class="form-group"><label>Tags / Keywords</label><input type="text" id="edit-tags" placeholder="e.g., #budget, #Q3"></div>
+                <div class="form-group full"><label>Next Physical Action</label><input type="text" id="edit-nextaction" placeholder="What is the literal next step?"></div>
+                <div class="form-group full"><label>Reference Links</label><input type="url" id="edit-links" placeholder="https://docs.google.com/..."></div>
+                <div class="form-group full"><label>Description & Notes</label><textarea id="edit-desc" placeholder="Drop extra details here..."></textarea></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-save" onclick="saveTask()">Save Task Data</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. PRESET MEETING ENGINE 
+        // ==========================================
+        const presetMeetings =[
+            { week: 1, day: 0, slot: 0, title: "Weekly Management Call", duration: "1h" }, // Mon 8-9
+            { week: 1, day: 2, slot: 4, title: "MEKCO Follow-up Teams Mtg", duration: "1h" }, // Wed 1-3
+            { week: 1, day: 3, slot: 2, title: "Acumatica Exec Demo", duration: "1h" }, // Thu 11-12
+            { week: 1, day: 4, slot: 0, title: "GTA Renewal Meeting", duration: "1h" } // Fri 8-9
+        ];
+
+        // --- 2. SCHEDULE GRIDS & DATES ENGINE ---
+        const schedule =[ { time: "8-9 AM", label: "Sync" }, { time: "9-11 AM", label: "Prime" }, { time: "11-12 PM", label: "Plan" }, { time: "12-1 PM", label: "Lunch" }, { time: "1-3 PM", label: "Meet" }, { time: "3-5 PM", label: "Catchup" } ];
+        const gridContainer = document.getElementById('calendar-grids');
+        let gridsHTML = '';
+        for (let w = 1; w <= 4; w++) {
+            gridsHTML += `<div id="grid-week-${w}" class="grid-layer" style="display: ${w === 1 ? 'block' : 'none'};">`;
+            schedule.forEach((slot, index) => {
+                gridsHTML += `<div class="calendar-row"><div class="time-label">${slot.time} <br><span>${slot.label}</span></div>`;
+                for(let i=0; i<5; i++) {
+                    const meeting = presetMeetings.find(m => m.week === w && m.day === i && m.slot === index);
+                    const innerContent = meeting ? `<div class="preset-meeting" data-duration="${meeting.duration}">🔒 ${meeting.title}</div>` : '';
+                    gridsHTML += `<div class="drop-zone" data-day="${i}" data-slot="${index}">${innerContent}</div>`;
+                }
+                gridsHTML += `</div>`;
+            }); gridsHTML += `</div>`;
+        } gridContainer.innerHTML = gridsHTML;
+
+        const weekDataCache = {}; const dayNames =['MON', 'TUE', 'WED', 'THU', 'FRI'];
+        function initDates() {
+            const today = new Date(); const currentDayIndex = today.getDay() || 7; 
+            const startOfThisWeek = new Date(today); startOfThisWeek.setDate(today.getDate() - currentDayIndex + 1);
+            for (let w = 1; w <= 4; w++) {
+                const mon = new Date(startOfThisWeek); mon.setDate(mon.getDate() + ((w - 1) * 7));
+                const fri = new Date(mon); fri.setDate(fri.getDate() + 4);
+                const fmt = { month: 'short', day: 'numeric' };
+                weekDataCache[w] = { rangeLabel: `Week ${w}`, days:[] };
+                for(let i = 0; i < 5; i++) { const d = new Date(mon); d.setDate(d.getDate() + i); weekDataCache[w].days.push(d.toLocaleDateString('en-US', fmt)); }
+            } updateHeaderDates(1);
+        }
+        function updateHeaderDates(weekNum) {
+            for(let i = 0; i < 5; i++) {
+                const headDiv = document.getElementById(`day-${i}`);
+                const currentClass = headDiv.className; 
+                headDiv.innerHTML = `${dayNames[i]}<span class="date-sub">${weekDataCache[weekNum].days[i]}</span>`;
+                headDiv.className = currentClass;
+            }
+        } initDates();
+
+        // --- 3. SATURATION ENGINE ---
+        function parseDurationToMinutes(durationStr) {
+            if (!durationStr) return 30; 
+            let min = 0;
+            const hMatch = durationStr.match(/(\d+(?:\.\d+)?)\s*h/i);
+            const mMatch = durationStr.match(/(\d+)\s*m/i);
+            if (hMatch) min += parseFloat(hMatch[1]) * 60;
+            if (mMatch) min += parseInt(mMatch[1]);
+            return min || 30;
+        }
+
+        function updateSaturationColors() {
+            let activeWeek = 1;
+            document.querySelectorAll('.tab').forEach((tab, index) => { if(tab.classList.contains('active')) activeWeek = index + 1; });
+            const grid = document.getElementById(`grid-week-${activeWeek}`);
+            
+            for(let day = 0; day < 5; day++) {
+                let totalMinutes = 0;
+                grid.querySelectorAll(`.drop-zone[data-day="${day}"] .task`).forEach(task => { totalMinutes += parseDurationToMinutes(task.dataset.duration); });
+                grid.querySelectorAll(`.drop-zone[data-day="${day}"] .preset-meeting`).forEach(mtg => { totalMinutes += parseDurationToMinutes(mtg.dataset.duration); });
+
+                const ratio = totalMinutes / 480; 
+                const headerDay = document.getElementById(`day-${day}`);
+                headerDay.classList.remove('sat-low', 'sat-med', 'sat-high', 'sat-none');
+                if (ratio === 0) headerDay.classList.add('sat-none'); else if (ratio < 0.6) headerDay.classList.add('sat-low'); else if (ratio <= 0.8) headerDay.classList.add('sat-med'); else headerDay.classList.add('sat-high'); 
+            }
+        }
+
+        // --- 4. SORTING ENGINE ---
+        function sortTasks() {
+            const zone = document.getElementById('notebook-zone');
+            const tasksArray = Array.from(zone.children);
+            const sortValue = document.getElementById('sort-tasks').value;
+
+            tasksArray.sort((a, b) => {
+                const priA = parseInt(a.dataset.priority || 0); const priB = parseInt(b.dataset.priority || 0);
+                const srcA = (a.dataset.source || '').toLowerCase(); const srcB = (b.dataset.source || '').toLowerCase();
+                
+                if (a.dataset.status === 'Completed' && b.dataset.status !== 'Completed') return 1;
+                if (b.dataset.status === 'Completed' && a.dataset.status !== 'Completed') return -1;
+
+                if (sortValue === 'priority-desc') return priB - priA || srcA.localeCompare(srcB);
+                else if (sortValue === 'priority-asc') return priA - priB || srcA.localeCompare(srcB);
+                else if (sortValue === 'source') return srcA.localeCompare(srcB) || priB - priA;
+                else return a.id.replace('-ghost', '').localeCompare(b.id.replace('-ghost', ''), undefined, {numeric: true});
+            });
+            tasksArray.forEach(task => zone.appendChild(task));
+        }
+
+        // --- 5. BULLETPROOF DRAG & DROP ---
+        let draggedElement = null;
+
+        document.addEventListener('dragstart', function(e) {
+            const taskEl = e.target.closest('.task');
+            if (taskEl && !taskEl.classList.contains('allocated')) {
+                draggedElement = taskEl;
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData('text/plain', taskEl.id);
+                setTimeout(() => taskEl.style.opacity = '0.5', 0); 
+            }
+        });
+
+        document.addEventListener('dragend', function(e) {
+            if (draggedElement) draggedElement.style.opacity = '1';
+            draggedElement = null;
+        });
+
+        document.addEventListener('click', function(e) {
+            const taskEl = e.target.closest('.task');
+            if (taskEl && !taskEl.classList.contains('allocated')) {
+                openModal(taskEl);
+            }
+        });
+
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('dragenter', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); e.dataTransfer.dropEffect = "move"; });
+            zone.addEventListener('dragleave', () => { zone.classList.remove('drag-over'); });
+            zone.addEventListener('drop', function(e) {
+                e.preventDefault(); this.classList.remove('drag-over');
+                if (draggedElement) {
+                    if (draggedElement.parentElement.id === 'notebook-zone' || draggedElement.parentElement.id === 'delegation-zone') {
+                        draggedElement.dataset.status = "In Progress"; 
+                        draggedElement.dataset.delegated = ""; 
+                        updateTaskVisuals(draggedElement, draggedElement.dataset, draggedElement.querySelector('strong').innerText);
+                        const ghost = draggedElement.cloneNode(true); ghost.id = draggedElement.id + '-ghost'; ghost.classList.add('allocated'); ghost.removeAttribute('draggable');
+                        document.getElementById('notebook-zone').insertBefore(ghost, document.getElementById('notebook-zone').firstChild);
+                        draggedElement.dataset.hasGhost = ghost.id;
+                    }
+                    this.appendChild(draggedElement); draggedElement.style.opacity = '1'; updateSaturationColors();
+                }
+            });
+        });
+
+        const notebookZone = document.getElementById('notebook-zone');
+        notebookZone.addEventListener('dragover', e => { e.preventDefault(); notebookZone.classList.add('return-hover'); });
+        notebookZone.addEventListener('dragleave', () => { notebookZone.classList.remove('return-hover'); });
+        notebookZone.addEventListener('drop', function(e) {
+            e.preventDefault(); this.classList.remove('return-hover');
+            if (draggedElement) {
+                draggedElement.dataset.status = "Not Started"; 
+                draggedElement.dataset.delegated = "";
+                if (draggedElement.dataset.hasGhost) {
+                    const ghost = document.getElementById(draggedElement.dataset.hasGhost);
+                    if (ghost) { updateTaskVisuals(draggedElement, draggedElement.dataset, draggedElement.querySelector('strong').innerText); ghost.replaceWith(draggedElement); } 
+                    else this.appendChild(draggedElement);
+                    delete draggedElement.dataset.hasGhost; 
+                } else {
+                    updateTaskVisuals(draggedElement, draggedElement.dataset, draggedElement.querySelector('strong').innerText);
+                    this.appendChild(draggedElement);
+                }
+                draggedElement.style.opacity = '1';
+                if(document.getElementById('sort-tasks').value !== 'default') sortTasks();
+                updateSaturationColors();
+            }
+        });
+
+        const delZone = document.getElementById('delegation-zone');
+        delZone.addEventListener('dragover', e => { e.preventDefault(); delZone.classList.add('return-hover'); });
+        delZone.addEventListener('dragleave', () => { delZone.classList.remove('return-hover'); });
+        delZone.addEventListener('drop', function(e) {
+            e.preventDefault(); this.classList.remove('return-hover');
+            if (draggedElement) {
+                if (draggedElement.dataset.hasGhost) {
+                    const ghost = document.getElementById(draggedElement.dataset.hasGhost);
+                    if (ghost) ghost.remove(); delete draggedElement.dataset.hasGhost;
+                }
+                draggedElement.dataset.status = "Delegated";
+                updateTaskVisuals(draggedElement, draggedElement.dataset, draggedElement.querySelector('strong').innerText);
+                this.appendChild(draggedElement); draggedElement.style.opacity = '1'; updateSaturationColors();
+            }
+        });
+
+        function switchWeek(weekNum) {
+            document.querySelectorAll('.tab').forEach((tab, index) => tab.classList.toggle('active', index === weekNum - 1));
+            updateHeaderDates(weekNum);
+            document.querySelectorAll('.grid-layer').forEach((grid, index) => grid.style.display = (index === weekNum - 1) ? 'block' : 'none');
+            updateSaturationColors();
+        }
+
+        // --- 6. FAILSAFE EDIT MODAL & DATA ENGINE ---
+        let currentEditingTask = null;
+
+        function safeSetValue(id, value) { const el = document.getElementById(id); if(el) el.value = value || ''; }
+        function safeGetValue(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+        
+        function openNewTaskModal() {
+            currentEditingTask = null; 
+            document.getElementById('modal-main-title').innerText = "Create New Task";
+            
+            safeSetValue('edit-title', '');
+            safeSetValue('edit-category', 'project');
+            safeSetValue('edit-priority', '1');
+            safeSetValue('edit-status', 'Not Started');
+            safeSetValue('edit-delegated', '');
+            safeSetValue('edit-energy', 'Routine Admin');
+            safeSetValue('edit-duration', '30m');
+            safeSetValue('edit-source', '');
+            safeSetValue('edit-requester', '');
+            safeSetValue('edit-received', new Date().toISOString().split('T')[0]);
+            safeSetValue('edit-due', '');
+            safeSetValue('edit-start', '');
+            safeSetValue('edit-parent', '');
+            safeSetValue('edit-tags', '');
+            safeSetValue('edit-waiting', '');
+            safeSetValue('edit-nextaction', '');
+            safeSetValue('edit-links', '');
+            safeSetValue('edit-desc', '');
+
+            document.getElementById('edit-modal').style.display = 'flex';
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function openModal(taskElement) {
+            currentEditingTask = taskElement;
+            document.getElementById('modal-main-title').innerText = "Task Details Dashboard";
+            const ds = taskElement.dataset;
+            
+            safeSetValue('edit-title', taskElement.querySelector('strong').innerText);
+            safeSetValue('edit-category', ds.category || 'project');
+            safeSetValue('edit-priority', ds.priority || '1');
+            safeSetValue('edit-status', ds.status || 'Not Started');
+            safeSetValue('edit-delegated', ds.delegated || '');
+            safeSetValue('edit-energy', ds.energy || 'Routine Admin');
+            safeSetValue('edit-duration', ds.duration || '');
+            safeSetValue('edit-source', ds.source || '');
+            safeSetValue('edit-requester', ds.requester || '');
+            safeSetValue('edit-received', ds.received || '');
+            safeSetValue('edit-due', ds.due || '');
+            safeSetValue('edit-start', ds.start || '');
+            safeSetValue('edit-parent', ds.parent || '');
+            safeSetValue('edit-tags', ds.tags || '');
+            safeSetValue('edit-waiting', ds.waiting || '');
+            safeSetValue('edit-nextaction', ds.nextaction || '');
+            safeSetValue('edit-links', ds.links || '');
+            safeSetValue('edit-desc', ds.notes || '');
+
+            document.getElementById('edit-modal').style.display = 'flex';
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function updateTaskVisuals(task, ds, title) {
+            task.querySelector('strong').innerText = title;
+            const priSpan = task.querySelector('.priority');
+            if(priSpan) {
+                priSpan.className = `priority pri-${ds.priority}`;
+                priSpan.innerText = ds.priority === '3' ? 'High' : (ds.priority === '2' ? 'Med' : 'Low');
+            }
+            task.dataset.category = ds.category;
+            
+            if (ds.status === 'Completed') task.classList.add('completed');
+            else task.classList.remove('completed');
+
+            const oldTag = task.querySelector('.delegation-tag');
+            if(oldTag) oldTag.remove();
+
+            const smallSpan = task.querySelector('small');
+            if(smallSpan) {
+                let catText = ds.category.charAt(0).toUpperCase() + ds.category.slice(1);
+                let srcText = ds.source ? ` | Source: ${ds.source}` : '';
+                let estText = ds.duration ? `Est: ${ds.duration}` : 'Est: 30m';
+                let dueText = ds.status === 'Completed' ? ` | Status: Completed` : (ds.due ? ` | Due: ${ds.due}` : ' | Due: None');
+                smallSpan.innerHTML = `Cat: ${catText}${srcText}<br>${estText}${dueText}`;
+            }
+
+            if(ds.status === 'Delegated') {
+                const delName = ds.delegated || 'Unknown';
+                const delTag = document.createElement('span');
+                delTag.className = 'delegation-tag';
+                delTag.innerText = `Waiting on: ${delName}`;
+                task.appendChild(delTag);
+            }
+        }
+
+        function saveTask() {
+            let statusVal = safeGetValue('edit-status');
+            let delegatedVal = safeGetValue('edit-delegated');
+
+            if (delegatedVal.trim() !== '' && statusVal === 'Not Started') statusVal = 'Delegated';
+            if (statusVal === 'Not Started' || statusVal === 'In Progress') delegatedVal = '';
+
+            const title = safeGetValue('edit-title') || 'Untitled Task';
+            const dsObj = {
+                category: safeGetValue('edit-category'),
+                priority: safeGetValue('edit-priority'),
+                status: statusVal,
+                delegated: delegatedVal,
+                energy: safeGetValue('edit-energy'),
+                duration: safeGetValue('edit-duration'),
+                source: safeGetValue('edit-source'),
+                requester: safeGetValue('edit-requester'),
+                received: safeGetValue('edit-received'),
+                due: safeGetValue('edit-due'),
+                start: safeGetValue('edit-start'),
+                parent: safeGetValue('edit-parent'),
+                tags: safeGetValue('edit-tags'),
+                waiting: safeGetValue('edit-waiting'),
+                nextaction: safeGetValue('edit-nextaction'),
+                links: safeGetValue('edit-links'),
+                notes: safeGetValue('edit-desc')
+            };
+
+            let targetTask = currentEditingTask;
+            const parentId = targetTask && targetTask.parentElement ? targetTask.parentElement.id : null;
+
+            if (!targetTask) {
+                targetTask = document.createElement('div');
+                targetTask.className = 'task';
+                targetTask.draggable = true;
+                targetTask.id = 'task-' + Date.now();
+                targetTask.innerHTML = `<span class="priority"></span><strong></strong><br><small></small>`;
+            }
+
+            Object.assign(targetTask.dataset, dsObj);
+            updateTaskVisuals(targetTask, dsObj, title);
+
+            if (dsObj.status === 'Delegated') {
+                document.getElementById('delegation-zone').appendChild(targetTask);
+                if (targetTask.dataset.hasGhost) {
+                    const ghost = document.getElementById(targetTask.dataset.hasGhost);
+                    if (ghost) ghost.remove();
+                    delete targetTask.dataset.hasGhost;
+                }
+            } else {
+                if (parentId === 'delegation-zone' || !currentEditingTask) {
+                    document.getElementById('notebook-zone').insertBefore(targetTask, document.getElementById('notebook-zone').firstChild);
+                }
+                
+                if (targetTask.dataset.hasGhost) {
+                    const ghost = document.getElementById(targetTask.dataset.hasGhost);
+                    if (ghost) {
+                        Object.assign(ghost.dataset, dsObj);
+                        updateTaskVisuals(ghost, dsObj, title);
+                    }
+                }
+            }
+
+            sortTasks();
+            updateSaturationColors();
+            closeModal();
+        }
+        
+        sortTasks();
+        updateSaturationColors();
+    </script>
+</body>
+</html>
