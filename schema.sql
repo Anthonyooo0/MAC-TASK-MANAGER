@@ -1,4 +1,7 @@
 -- Run this in Azure SQL Query Editor (mac-sql-server / MAC-TASk-MANAGER)
+-- If tables already exist, drop them first:
+-- DROP TABLE IF EXISTS tasks;
+-- DROP TABLE IF EXISTS changelog;
 
 CREATE TABLE tasks (
   id            NVARCHAR(50) PRIMARY KEY,
@@ -8,6 +11,8 @@ CREATE TABLE tasks (
   priority      INT NOT NULL DEFAULT 1,
   status        NVARCHAR(50) NOT NULL DEFAULT 'Not Started',
   duration      NVARCHAR(50) DEFAULT '30m',
+  start_time    NVARCHAR(10) DEFAULT '',
+  end_time      NVARCHAR(10) DEFAULT '',
   source        NVARCHAR(255) DEFAULT '',
   delegated     NVARCHAR(255) DEFAULT '',
   energy        NVARCHAR(50) DEFAULT '',

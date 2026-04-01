@@ -127,25 +127,57 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
     const isDelegatedNow = finalTask.status === 'Delegated' && finalTask.delegated;
     const delegateChanged = isDelegatedNow && finalTask.delegated !== wasDelegated;
 
-    if (delegateChanged && finalTask.delegated && window.location.hostname !== 'localhost') {
+    if (delegateChanged && finalTask.delegated) {
       const assignee = users.find(u => u.email === finalTask.delegated);
+
+      // Create task in the assignee's task list via API
       try {
-        const { sendDelegationEmail } = await import('../graphService');
-        const msalModule = await import('@azure/msal-browser');
-        const { msalConfig } = await import('../authConfig');
-
-        const instance = new msalModule.PublicClientApplication(msalConfig);
-        await instance.initialize();
-
-        await sendDelegationEmail(
-          instance,
-          finalTask.delegated,
-          assignee?.displayName || '',
-          finalTask.title,
-          currentUser,
-        );
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-email': finalTask.delegated,
+          },
+          body: JSON.stringify({
+            id: 'task-' + Date.now() + '-delegated',
+            title: finalTask.title,
+            category: finalTask.category,
+            priority: finalTask.priority,
+            status: 'Not Started',
+            duration: finalTask.duration,
+            source: `Delegated by ${currentUser}`,
+            startTime: finalTask.startTime,
+            endTime: finalTask.endTime,
+            requester: currentUser,
+            due: finalTask.due,
+            notes: finalTask.notes,
+            location: 'notebook',
+          }),
+        });
       } catch (err) {
-        console.warn('Failed to send notification:', err);
+        console.warn('Failed to create task for assignee:', err);
+      }
+
+      // Send email notification
+      if (window.location.hostname !== 'localhost') {
+        try {
+          const { sendDelegationEmail } = await import('../graphService');
+          const msalModule = await import('@azure/msal-browser');
+          const { msalConfig } = await import('../authConfig');
+
+          const instance = new msalModule.PublicClientApplication(msalConfig);
+          await instance.initialize();
+
+          await sendDelegationEmail(
+            instance,
+            finalTask.delegated,
+            assignee?.displayName || '',
+            finalTask.title,
+            currentUser,
+          );
+        } catch (err) {
+          console.warn('Failed to send notification:', err);
+        }
       }
     }
 

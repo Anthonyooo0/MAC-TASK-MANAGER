@@ -27,8 +27,10 @@ module.exports = async function (context, req) {
         .input('category', sql.NVarChar, t.category)
         .input('priority', sql.Int, t.priority)
         .input('status', sql.NVarChar, t.status)
-        .input('duration', sql.NVarChar, t.duration)
-        .input('source', sql.NVarChar, t.source)
+        .input('duration', sql.NVarChar, t.duration || '')
+        .input('start_time', sql.NVarChar, t.startTime || '')
+        .input('end_time', sql.NVarChar, t.endTime || '')
+        .input('source', sql.NVarChar, t.source || '')
         .input('delegated', sql.NVarChar, t.delegated || '')
         .input('energy', sql.NVarChar, t.energy || '')
         .input('requester', sql.NVarChar, t.requester || '')
@@ -45,8 +47,8 @@ module.exports = async function (context, req) {
         .input('calendar_week', sql.Int, t.calendarPosition?.week || null)
         .input('calendar_day', sql.Int, t.calendarPosition?.day || null)
         .input('calendar_slot', sql.Int, t.calendarPosition?.slot || null)
-        .query(`INSERT INTO tasks (id, user_email, title, category, priority, status, duration, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot)
-                VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot)`);
+        .query(`INSERT INTO tasks (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot)
+                VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot)`);
       context.res = { status: 201, body: { success: true } };
 
     } else if (method === 'PUT' && id) {
@@ -58,8 +60,10 @@ module.exports = async function (context, req) {
         .input('category', sql.NVarChar, t.category)
         .input('priority', sql.Int, t.priority)
         .input('status', sql.NVarChar, t.status)
-        .input('duration', sql.NVarChar, t.duration)
-        .input('source', sql.NVarChar, t.source)
+        .input('duration', sql.NVarChar, t.duration || '')
+        .input('start_time', sql.NVarChar, t.startTime || '')
+        .input('end_time', sql.NVarChar, t.endTime || '')
+        .input('source', sql.NVarChar, t.source || '')
         .input('delegated', sql.NVarChar, t.delegated || '')
         .input('energy', sql.NVarChar, t.energy || '')
         .input('requester', sql.NVarChar, t.requester || '')
@@ -76,7 +80,7 @@ module.exports = async function (context, req) {
         .input('calendar_week', sql.Int, t.calendarPosition?.week || null)
         .input('calendar_day', sql.Int, t.calendarPosition?.day || null)
         .input('calendar_slot', sql.Int, t.calendarPosition?.slot || null)
-        .query(`UPDATE tasks SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot
+        .query(`UPDATE tasks SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, start_time=@start_time, end_time=@end_time, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot
                 WHERE id=@id AND user_email=@user_email`);
       context.res = { status: 200, body: { success: true } };
 
