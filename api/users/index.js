@@ -19,7 +19,7 @@ module.exports = async function (context, req) {
     const users = (data.value || [])
       .filter(u => {
         const email = (u.mail || u.userPrincipalName || '').toLowerCase();
-        return email.endsWith('@macproducts.net');
+        return email.endsWith('@macproducts.net') || email.endsWith('@macimpulse.net');
       })
       .map(u => ({
         displayName: u.displayName,
