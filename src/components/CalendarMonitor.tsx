@@ -4,6 +4,44 @@ import { schedule } from '../data/meetings';
 import { getWeekDates, parseDurationToMinutes } from '../utils';
 import TaskCard from './TaskCard';
 
+const SLOT_HOURS = [
+  { start: 8, end: 9 },
+  { start: 9, end: 11 },
+  { start: 11, end: 12 },
+  { start: 12, end: 13 },
+  { start: 13, end: 15 },
+  { start: 15, end: 17 },
+];
+
+function timeToHour(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h + m / 60;
+}
+
+function getTaskSpan(task: TaskData) {
+  if (!task.startTime || !task.endTime) return null;
+  const startH = timeToHour(task.startTime);
+  const endH = timeToHour(task.endTime);
+  if (endH <= startH) return null;
+
+  const slots: number[] = [];
+  for (let i = 0; i < SLOT_HOURS.length; i++) {
+    if (startH < SLOT_HOURS[i].end && endH > SLOT_HOURS[i].start) slots.push(i);
+  }
+  if (slots.length === 0) return null;
+
+  const firstStart = SLOT_HOURS[slots[0]].start;
+  const lastEnd = SLOT_HOURS[slots[slots.length - 1]].end;
+  const totalH = lastEnd - firstStart;
+
+  return {
+    startSlot: slots[0],
+    slotCount: slots.length,
+    topPercent: ((startH - firstStart) / totalH) * 100,
+    heightPercent: ((endH - startH) / totalH) * 100,
+  };
+}
+
 export interface CalendarMeeting {
   id: string;
   title: string;
@@ -166,6 +204,41 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                     >
                       <strong>{meeting.title}</strong>
                       <span className="meeting-time">{meeting.timeLabel}</span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Spanning task overlays (tasks with start/end times) */}
+              {calendarTasks.filter(t => t.calendarPosition?.week === activeWeek && t.startTime && t.endTime).map(task => {
+                const span = getTaskSpan(task);
+                if (!span || task.calendarPosition === undefined) return null;
+                const col = task.calendarPosition!.day + 2;
+                const rowStart = span.startSlot + 1;
+                const rowEnd = rowStart + span.slotCount;
+
+                return (
+                  <div
+                    key={task.id + '-span'}
+                    className="meeting-span-wrapper"
+                    style={{
+                      gridRow: `${rowStart} / ${rowEnd}`,
+                      gridColumn: col,
+                    }}
+                  >
+                    <div
+                      className="task-span"
+                      style={{
+                        position: 'absolute',
+                        top: `${span.topPercent}%`,
+                        height: `${span.heightPercent}%`,
+                        left: '2px',
+                        right: '2px',
+                      }}
+                      onClick={() => onEditTask(task.id)}
+                    >
+                      <strong>{task.title}</strong>
+                      <span className="meeting-time">{task.startTime} - {task.endTime}</span>
                     </div>
                   </div>
                 );

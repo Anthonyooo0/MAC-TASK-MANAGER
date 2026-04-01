@@ -6,6 +6,8 @@ export interface TaskData {
   priority: 1 | 2 | 3;
   status: 'Not Started' | 'In Progress' | 'Delegated' | 'Waiting on Someone' | 'Completed';
   duration: string;
+  startTime?: string; // HH:MM format e.g. "08:00"
+  endTime?: string;   // HH:MM format e.g. "17:00"
   source: string;
   delegated?: string;
   energy?: string;

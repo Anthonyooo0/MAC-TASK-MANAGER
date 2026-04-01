@@ -50,6 +50,16 @@ const UserSearchInput: React.FC<{
   );
 };
 
+function calcDuration(start: string, end: string): string {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins <= 0) return '30m';
+  if (mins < 60) return `${mins}m`;
+  const h = mins / 60;
+  return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`;
+}
+
 interface EditModalProps {
   isOpen: boolean;
   task: TaskData | null;
@@ -207,8 +217,25 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
               </select>
             </div>
             <div className="form-group">
-              <label>Est. Duration</label>
-              <input type="text" value={form.duration} onChange={e => set('duration', e.target.value)} placeholder="e.g., 30m, 1h, 2.5h" />
+              <label>Start Time</label>
+              <input type="time" value={form.startTime || ''} onChange={e => {
+                set('startTime', e.target.value);
+                // Auto-calculate duration
+                if (e.target.value && form.endTime) {
+                  const dur = calcDuration(e.target.value, form.endTime);
+                  set('duration', dur);
+                }
+              }} />
+            </div>
+            <div className="form-group">
+              <label>End Time</label>
+              <input type="time" value={form.endTime || ''} onChange={e => {
+                set('endTime', e.target.value);
+                if (form.startTime && e.target.value) {
+                  const dur = calcDuration(form.startTime, e.target.value);
+                  set('duration', dur);
+                }
+              }} />
             </div>
             <div className="form-group">
               <label>Source / Channel</label>
