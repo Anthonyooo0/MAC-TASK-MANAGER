@@ -1,12 +1,25 @@
 import type { IPublicClientApplication } from "@azure/msal-browser";
 import { graphScopes } from "./authConfig";
 
+export interface OutlookAttendee {
+  emailAddress: { name: string; address: string };
+  status: { response: string; time?: string }; // none, organizer, accepted, declined, tentativelyAccepted
+  type: string; // required, optional, resource
+}
+
 export interface OutlookEvent {
   id: string;
   subject: string;
   start: { dateTime: string; timeZone: string };
   end: { dateTime: string; timeZone: string };
   isAllDay: boolean;
+  location?: { displayName: string };
+  organizer?: { emailAddress: { name: string; address: string } };
+  attendees?: OutlookAttendee[];
+  bodyPreview?: string;
+  isOnlineMeeting?: boolean;
+  onlineMeetingUrl?: string;
+  responseStatus?: { response: string };
 }
 
 async function getAccessToken(instance: IPublicClientApplication): Promise<string> {
@@ -29,7 +42,7 @@ export async function fetchCalendarEvents(
   const end = endDate.toISOString();
 
   const response = await fetch(
-    `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${start}&endDateTime=${end}&$select=id,subject,start,end,isAllDay&$orderby=start/dateTime&$top=100`,
+    `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${start}&endDateTime=${end}&$select=id,subject,start,end,isAllDay,location,organizer,attendees,bodyPreview,isOnlineMeeting,onlineMeetingUrl,responseStatus&$orderby=start/dateTime&$top=100`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }

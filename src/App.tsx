@@ -87,6 +87,18 @@ const App: React.FC = () => {
               timeLabel: result.timeLabel,
               topPercent: result.topPercent,
               heightPercent: result.heightPercent,
+              location: event.location?.displayName || '',
+              organizer: event.organizer?.emailAddress?.name || '',
+              attendees: (event.attendees || []).map(a => ({
+                name: a.emailAddress.name,
+                email: a.emailAddress.address,
+                response: a.status.response,
+                type: a.type,
+              })),
+              bodyPreview: event.bodyPreview || '',
+              myResponse: event.responseStatus?.response || '',
+              isOnline: event.isOnlineMeeting || false,
+              onlineMeetingUrl: event.onlineMeetingUrl || '',
             });
           }
         });

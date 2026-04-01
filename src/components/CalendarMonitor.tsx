@@ -42,16 +42,31 @@ function getTaskSpan(task: TaskData) {
   };
 }
 
+export interface MeetingAttendee {
+  name: string;
+  email: string;
+  response: string; // none, organizer, accepted, declined, tentativelyAccepted
+  type: string;     // required, optional
+}
+
 export interface CalendarMeeting {
   id: string;
   title: string;
-  day: number;      // 0=Mon, 4=Fri
-  startSlot: number; // first slot it appears in
-  slots: number[];   // all slot indices it spans
+  day: number;
+  startSlot: number;
+  slots: number[];
   duration: string;
-  timeLabel: string; // e.g. "12:00 PM - 5:00 PM"
-  topPercent: number;    // % offset from top of first slot row
-  heightPercent: number; // % of total spanned rows
+  timeLabel: string;
+  topPercent: number;
+  heightPercent: number;
+  // Extra details for hover
+  location?: string;
+  organizer?: string;
+  attendees?: MeetingAttendee[];
+  bodyPreview?: string;
+  myResponse?: string;
+  isOnline?: boolean;
+  onlineMeetingUrl?: string;
 }
 
 interface CalendarMonitorProps {
@@ -64,6 +79,103 @@ interface CalendarMonitorProps {
 }
 
 const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+
+const RESPONSE_LABELS: Record<string, string> = {
+  accepted: 'Accepted',
+  declined: 'Declined',
+  tentativelyAccepted: 'Tentative',
+  organizer: 'Organizer',
+  none: 'No response',
+};
+
+const RESPONSE_COLORS: Record<string, string> = {
+  accepted: '#27ae60',
+  declined: '#e74c3c',
+  tentativelyAccepted: '#f39c12',
+  organizer: '#3182ce',
+  none: '#95a5a6',
+};
+
+const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
+  const [hovered, setHovered] = React.useState(false);
+
+  return (
+    <div
+      className="meeting-span"
+      style={{
+        position: 'absolute',
+        top: `${meeting.topPercent}%`,
+        height: `${meeting.heightPercent}%`,
+        left: '2px',
+        right: '2px',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <strong>{meeting.title}</strong>
+      <span className="meeting-time">{meeting.timeLabel}</span>
+
+      {hovered && (
+        <div className="meeting-tooltip">
+          <div className="meeting-tooltip-title">{meeting.title}</div>
+          <div className="meeting-tooltip-time">{meeting.timeLabel} ({meeting.duration})</div>
+
+          {meeting.location && (
+            <div className="meeting-tooltip-row">
+              <span className="meeting-tooltip-label">Location</span>
+              <span>{meeting.location}</span>
+            </div>
+          )}
+
+          {meeting.organizer && (
+            <div className="meeting-tooltip-row">
+              <span className="meeting-tooltip-label">Organizer</span>
+              <span>{meeting.organizer}</span>
+            </div>
+          )}
+
+          {meeting.myResponse && (
+            <div className="meeting-tooltip-row">
+              <span className="meeting-tooltip-label">Your RSVP</span>
+              <span style={{ color: RESPONSE_COLORS[meeting.myResponse] || '#636e72', fontWeight: 700 }}>
+                {RESPONSE_LABELS[meeting.myResponse] || meeting.myResponse}
+              </span>
+            </div>
+          )}
+
+          {meeting.isOnline && (
+            <div className="meeting-tooltip-row">
+              <span className="meeting-tooltip-label">Online</span>
+              <span style={{ color: '#3182ce' }}>Teams Meeting</span>
+            </div>
+          )}
+
+          {meeting.attendees && meeting.attendees.length > 0 && (
+            <div className="meeting-tooltip-attendees">
+              <span className="meeting-tooltip-label">Attendees ({meeting.attendees.length})</span>
+              <div className="meeting-tooltip-list">
+                {meeting.attendees.map((a, i) => (
+                  <div key={i} className="meeting-tooltip-attendee">
+                    <span
+                      className="attendee-dot"
+                      style={{ background: RESPONSE_COLORS[a.response] || '#95a5a6' }}
+                    />
+                    <span className="attendee-name">{a.name || a.email.split('@')[0]}</span>
+                    <span className="attendee-status">{RESPONSE_LABELS[a.response] || a.response}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {meeting.bodyPreview && (
+            <div className="meeting-tooltip-body">{meeting.bodyPreview}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
   activeWeek, onWeekChange, calendarTasks, outlookMeetings, onDropToCalendar, onEditTask
@@ -192,19 +304,7 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                       gridColumn: col,
                     }}
                   >
-                    <div
-                      className="meeting-span"
-                      style={{
-                        position: 'absolute',
-                        top: `${meeting.topPercent}%`,
-                        height: `${meeting.heightPercent}%`,
-                        left: '2px',
-                        right: '2px',
-                      }}
-                    >
-                      <strong>{meeting.title}</strong>
-                      <span className="meeting-time">{meeting.timeLabel}</span>
-                    </div>
+                    <MeetingBlock meeting={meeting} />
                   </div>
                 );
               })}
