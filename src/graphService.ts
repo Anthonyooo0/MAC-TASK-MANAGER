@@ -44,28 +44,56 @@ export async function fetchCalendarEvents(
   return data.value || [];
 }
 
-/** Convert an Outlook event into a day index (0-4, Mon-Fri) and slot index based on hour */
-export function mapEventToCalendarSlot(event: OutlookEvent): { day: number; slot: number; duration: string } | null {
+// Slot boundaries in hours
+const SLOT_BOUNDS = [
+  { start: 8, end: 9 },   // slot 0: 8-9 AM
+  { start: 9, end: 11 },  // slot 1: 9-11 AM
+  { start: 11, end: 12 }, // slot 2: 11-12 PM
+  { start: 12, end: 13 }, // slot 3: 12-1 PM
+  { start: 13, end: 15 }, // slot 4: 1-3 PM
+  { start: 15, end: 17 }, // slot 5: 3-5 PM
+];
+
+function hourToSlot(hour: number): number | null {
+  for (let i = 0; i < SLOT_BOUNDS.length; i++) {
+    if (hour >= SLOT_BOUNDS[i].start && hour < SLOT_BOUNDS[i].end) return i;
+  }
+  return null;
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+/** Convert an Outlook event into day, slots it spans, and duration */
+export function mapEventToCalendarSlot(event: OutlookEvent): { day: number; startSlot: number; slots: number[]; duration: string; timeLabel: string } | null {
   const start = new Date(event.start.dateTime + (event.start.timeZone === "UTC" ? "Z" : ""));
   const end = new Date(event.end.dateTime + (event.end.timeZone === "UTC" ? "Z" : ""));
 
-  const dayOfWeek = start.getDay(); // 0=Sun, 1=Mon...
-  if (dayOfWeek < 1 || dayOfWeek > 5) return null; // skip weekends
-  const day = dayOfWeek - 1; // 0=Mon, 4=Fri
+  const dayOfWeek = start.getDay();
+  if (dayOfWeek < 1 || dayOfWeek > 5) return null;
+  const day = dayOfWeek - 1;
 
-  const hour = start.getHours();
-  let slot: number;
-  if (hour >= 8 && hour < 9) slot = 0;       // 8-9 AM
-  else if (hour >= 9 && hour < 11) slot = 1;  // 9-11 AM
-  else if (hour >= 11 && hour < 12) slot = 2; // 11-12 PM
-  else if (hour >= 12 && hour < 13) slot = 3; // 12-1 PM
-  else if (hour >= 13 && hour < 15) slot = 4; // 1-3 PM
-  else if (hour >= 15 && hour < 17) slot = 5; // 3-5 PM
-  else return null; // outside work hours
+  const startHour = start.getHours() + start.getMinutes() / 60;
+  const endHour = end.getHours() + end.getMinutes() / 60;
+
+  const startSlot = hourToSlot(startHour);
+  if (startSlot === null) return null;
+
+  // Find all slots this event spans
+  const slots: number[] = [];
+  for (let i = 0; i < SLOT_BOUNDS.length; i++) {
+    const sb = SLOT_BOUNDS[i];
+    // Event overlaps this slot if event start < slot end AND event end > slot start
+    if (startHour < sb.end && endHour > sb.start) {
+      slots.push(i);
+    }
+  }
 
   const durationMs = end.getTime() - start.getTime();
   const durationMin = Math.round(durationMs / 60000);
   const duration = durationMin >= 60 ? `${(durationMin / 60).toFixed(1).replace('.0', '')}h` : `${durationMin}m`;
+  const timeLabel = `${formatTime(start)} - ${formatTime(end)}`;
 
-  return { day, slot, duration };
+  return { day, startSlot, slots, duration, timeLabel };
 }

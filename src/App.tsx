@@ -13,10 +13,11 @@ const isDev = window.location.hostname === 'localhost';
 
 // Sample meetings for local dev
 const devMeetings: CalendarMeeting[] = [
-  { id: 'dev-1', title: 'Weekly Management Call', day: 0, slot: 0, duration: '1h' },
-  { id: 'dev-2', title: 'MEKCO Follow-up Teams Mtg', day: 2, slot: 4, duration: '1h' },
-  { id: 'dev-3', title: 'Acumatica Exec Demo', day: 3, slot: 2, duration: '1h' },
-  { id: 'dev-4', title: 'GTA Renewal Meeting', day: 4, slot: 0, duration: '1h' },
+  { id: 'dev-1', title: 'Weekly Management Call', day: 0, startSlot: 0, slots: [0], duration: '1h', timeLabel: '8:00 AM - 9:00 AM' },
+  { id: 'dev-2', title: 'MEKCO Follow-up Teams Mtg', day: 2, startSlot: 4, slots: [4], duration: '1h', timeLabel: '1:00 PM - 2:00 PM' },
+  { id: 'dev-3', title: 'Acumatica Exec Demo', day: 3, startSlot: 2, slots: [2], duration: '1h', timeLabel: '11:00 AM - 12:00 PM' },
+  { id: 'dev-4', title: 'GTA Renewal Meeting', day: 4, startSlot: 0, slots: [0, 1], duration: '3h', timeLabel: '8:00 AM - 11:00 AM' },
+  { id: 'dev-5', title: "Anthony's Work Block", day: 1, startSlot: 3, slots: [3, 4, 5], duration: '6h', timeLabel: '12:00 PM - 5:00 PM' },
 ];
 
 const App: React.FC = () => {
@@ -80,14 +81,16 @@ const App: React.FC = () => {
 
         events.forEach(event => {
           if (event.isAllDay) return;
-          const slot = mapEventToCalendarSlot(event);
-          if (slot) {
+          const result = mapEventToCalendarSlot(event);
+          if (result) {
             mapped.push({
               id: event.id,
               title: event.subject,
-              day: slot.day,
-              slot: slot.slot,
-              duration: slot.duration,
+              day: result.day,
+              startSlot: result.startSlot,
+              slots: result.slots,
+              duration: result.duration,
+              timeLabel: result.timeLabel,
             });
           }
         });

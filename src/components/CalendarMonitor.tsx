@@ -7,9 +7,11 @@ import TaskCard from './TaskCard';
 export interface CalendarMeeting {
   id: string;
   title: string;
-  day: number;   // 0=Mon, 4=Fri
-  slot: number;  // 0-5 matching schedule slots
+  day: number;      // 0=Mon, 4=Fri
+  startSlot: number; // first slot it appears in
+  slots: number[];   // all slot indices it spans
   duration: string;
+  timeLabel: string; // e.g. "12:00 PM - 5:00 PM"
 }
 
 interface CalendarMonitorProps {
@@ -47,8 +49,10 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
           totalMinutes += parseDurationToMinutes(t.duration);
         }
       });
+      const counted = new Set<string>();
       outlookMeetings.forEach(m => {
-        if (m.day === day) {
+        if (m.day === day && !counted.has(m.id)) {
+          counted.add(m.id);
           totalMinutes += parseDurationToMinutes(m.duration);
         }
       });
@@ -99,8 +103,13 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                   <span>{slot.label}</span>
                 </div>
                 {Array.from({ length: 5 }, (_, dayIndex) => {
-                  const meetingsInSlot = outlookMeetings.filter(
-                    m => m.day === dayIndex && m.slot === slotIndex
+                  // Meetings starting in this slot
+                  const meetingsStarting = outlookMeetings.filter(
+                    m => m.day === dayIndex && m.startSlot === slotIndex
+                  );
+                  // Meetings continuing through this slot (started earlier)
+                  const meetingsContinuing = outlookMeetings.filter(
+                    m => m.day === dayIndex && m.startSlot !== slotIndex && m.slots.includes(slotIndex)
                   );
                   const tasksInSlot = calendarTasks.filter(
                     t => t.calendarPosition?.week === activeWeek &&
@@ -115,10 +124,14 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                       slot={slotIndex}
                       onDrop={onDropToCalendar}
                     >
-                      {meetingsInSlot.map(meeting => (
-                        <div key={meeting.id} className="preset-meeting" data-duration={meeting.duration}>
-                          {meeting.title}
+                      {meetingsStarting.map(meeting => (
+                        <div key={meeting.id} className="preset-meeting meeting-start" data-duration={meeting.duration}>
+                          <strong>{meeting.title}</strong>
+                          <span className="meeting-time">{meeting.timeLabel}</span>
                         </div>
+                      ))}
+                      {meetingsContinuing.map(meeting => (
+                        <div key={meeting.id} className="preset-meeting meeting-continue" data-duration={meeting.duration} />
                       ))}
                       {tasksInSlot.map(task => (
                         <TaskCard
