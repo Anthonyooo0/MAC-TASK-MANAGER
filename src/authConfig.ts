@@ -10,6 +10,6 @@ export const msalConfig: Configuration = {
   cache: { cacheLocation: "sessionStorage" },
 };
 
-export const loginRequest = { scopes: ["Calendars.Read"] };
-export const graphScopes = { scopes: ["Calendars.Read"] };
+export const loginRequest = { scopes: ["Calendars.Read", "User.Read.All", "Mail.Send"] };
+export const graphScopes = { scopes: ["Calendars.Read", "User.Read.All", "Mail.Send"] };
 export const ALLOWED_DOMAIN = "macproducts.net";

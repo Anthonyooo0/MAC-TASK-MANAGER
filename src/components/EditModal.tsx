@@ -73,19 +73,23 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
     const isDelegatedNow = finalTask.status === 'Delegated' && finalTask.delegated;
     const delegateChanged = isDelegatedNow && finalTask.delegated !== wasDelegated;
 
-    if (delegateChanged && finalTask.delegated) {
+    if (delegateChanged && finalTask.delegated && window.location.hostname !== 'localhost') {
       const assignee = users.find(u => u.email === finalTask.delegated);
       try {
-        await fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            toEmail: finalTask.delegated,
-            toName: assignee?.displayName || '',
-            taskTitle: finalTask.title,
-            assignedBy: currentUser,
-          }),
-        });
+        const { sendDelegationEmail } = await import('../graphService');
+        const msalModule = await import('@azure/msal-browser');
+        const { msalConfig } = await import('../authConfig');
+
+        const instance = new msalModule.PublicClientApplication(msalConfig);
+        await instance.initialize();
+
+        await sendDelegationEmail(
+          instance,
+          finalTask.delegated,
+          assignee?.displayName || '',
+          finalTask.title,
+          currentUser,
+        );
       } catch (err) {
         console.warn('Failed to send notification:', err);
       }

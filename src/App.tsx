@@ -40,12 +40,6 @@ const App: React.FC = () => {
       return;
     }
     import('@azure/msal-react').then(() => setMsalReady(true));
-
-    // Fetch org users for delegation dropdown
-    fetch('/api/users')
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setUsers(data); })
-      .catch(err => console.warn('Failed to load users:', err));
   }, []);
 
   const [tasks, setTasks] = useState<TaskData[]>(initialTasks);
@@ -103,6 +97,29 @@ const App: React.FC = () => {
 
     loadOutlookEvents();
   }, [activeWeek, currentUser]);
+
+  // Fetch org users for delegation dropdown (production only)
+  useEffect(() => {
+    if (isDev || !currentUser) return;
+
+    async function loadUsers() {
+      try {
+        const { fetchOrgUsers } = await import('./graphService');
+        const msalModule = await import('@azure/msal-browser');
+        const { msalConfig } = await import('./authConfig');
+
+        const instance = new msalModule.PublicClientApplication(msalConfig);
+        await instance.initialize();
+
+        const orgUsers = await fetchOrgUsers(instance);
+        setUsers(orgUsers);
+      } catch (err) {
+        console.warn('Failed to load org users:', err);
+      }
+    }
+
+    loadUsers();
+  }, [currentUser]);
 
   const ghostTaskIds = new Set(
     tasks.filter(t => t.location === 'calendar').map(t => t.id)

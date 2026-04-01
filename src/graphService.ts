@@ -97,3 +97,88 @@ export function mapEventToCalendarSlot(event: OutlookEvent): { day: number; star
 
   return { day, startSlot, slots, duration, timeLabel };
 }
+
+/** Fetch all MAC Products users from the org directory */
+export async function fetchOrgUsers(instance: IPublicClientApplication): Promise<{ displayName: string; email: string }[]> {
+  const token = await getAccessToken(instance);
+  const response = await fetch(
+    'https://graph.microsoft.com/v1.0/users?$select=displayName,mail,userPrincipalName&$top=999&$filter=accountEnabled eq true',
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (!response.ok) {
+    console.warn("Graph users error:", response.status, await response.text());
+    return [];
+  }
+
+  const data = await response.json();
+  return (data.value || [])
+    .filter((u: { mail?: string; userPrincipalName?: string }) => {
+      const email = (u.mail || u.userPrincipalName || '').toLowerCase();
+      return email.endsWith('@macproducts.net');
+    })
+    .map((u: { displayName: string; mail?: string; userPrincipalName?: string }) => ({
+      displayName: u.displayName,
+      email: (u.mail || u.userPrincipalName || '').toLowerCase(),
+    }))
+    .sort((a: { displayName: string }, b: { displayName: string }) => a.displayName.localeCompare(b.displayName));
+}
+
+/** Send delegation notification email via Graph API on behalf of signed-in user */
+export async function sendDelegationEmail(
+  instance: IPublicClientApplication,
+  toEmail: string,
+  toName: string,
+  taskTitle: string,
+  assignedBy: string
+): Promise<void> {
+  const token = await getAccessToken(instance);
+
+  const emailPayload = {
+    message: {
+      subject: `Task Assigned: ${taskTitle}`,
+      body: {
+        contentType: 'HTML',
+        content: `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #1a365d; color: white; padding: 20px 30px; border-radius: 12px 12px 0 0;">
+              <h2 style="margin: 0; font-size: 18px;">MAC Task Manager</h2>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none;">
+              <p style="color: #2d3436; font-size: 16px; margin-top: 0;">Hi ${toName || toEmail.split('@')[0]},</p>
+              <p style="color: #636e72; font-size: 14px;">A task has been delegated to you on the MAC Task Manager:</p>
+              <div style="background: #f0f4f8; border-left: 4px solid #3182ce; padding: 15px 20px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+                <p style="margin: 0; font-weight: 700; color: #1a365d; font-size: 16px;">${taskTitle}</p>
+              </div>
+              <p style="color: #636e72; font-size: 14px;">Assigned by: <strong>${assignedBy}</strong></p>
+              <p style="color: #636e72; font-size: 14px;">Please log in to the <a href="https://agreeable-rock-082a9c91e.6.azurestaticapps.net" style="color: #3182ce;">MAC Task Manager</a> to view details.</p>
+            </div>
+            <div style="text-align: center; padding: 15px; color: #a0aec0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+              MAC Products Internal System
+            </div>
+          </div>
+        `,
+      },
+      toRecipients: [
+        { emailAddress: { address: toEmail, name: toName || '' } },
+      ],
+      ccRecipients: [
+        { emailAddress: { address: 'anthony.jimenez@macproducts.net', name: 'Anthony Jimenez' } },
+      ],
+    },
+    saveToSentItems: false,
+  };
+
+  const response = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(emailPayload),
+  });
+
+  if (!response.ok) {
+    console.warn("Send mail error:", response.status, await response.text());
+  }
+}
