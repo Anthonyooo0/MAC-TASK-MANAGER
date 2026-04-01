@@ -50,15 +50,58 @@ const UserSearchInput: React.FC<{
   );
 };
 
-function calcDuration(start: string, end: string): string {
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  const mins = (eh * 60 + em) - (sh * 60 + sm);
-  if (mins <= 0) return '30m';
-  if (mins < 60) return `${mins}m`;
-  const h = mins / 60;
-  return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`;
+function parseDuration(dur: string): { hours: number; mins: number } {
+  let hours = 0, mins = 0;
+  const hMatch = dur.match(/(\d+)\s*h/i);
+  const mMatch = dur.match(/(\d+)\s*m/i);
+  if (hMatch) hours = parseInt(hMatch[1]);
+  if (mMatch) mins = parseInt(mMatch[1]);
+  if (!hMatch && !mMatch) mins = 30;
+  return { hours, mins };
 }
+
+function formatDuration(hours: number, mins: number): string {
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (mins > 0) parts.push(`${mins}m`);
+  return parts.length > 0 ? parts.join(' ') : '0m';
+}
+
+const DurationPicker: React.FC<{
+  value: string;
+  onChange: (val: string) => void;
+}> = ({ value, onChange }) => {
+  const parsed = parseDuration(value || '30m');
+  const [hours, setHours] = useState(parsed.hours);
+  const [mins, setMins] = useState(parsed.mins);
+
+  useEffect(() => {
+    const p = parseDuration(value || '30m');
+    setHours(p.hours);
+    setMins(p.mins);
+  }, [value]);
+
+  const update = (h: number, m: number) => {
+    setHours(h);
+    setMins(m);
+    onChange(formatDuration(h, m));
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <select value={hours} onChange={e => update(Number(e.target.value), mins)} style={{ flex: 1 }}>
+        {Array.from({ length: 13 }, (_, i) => (
+          <option key={i} value={i}>{i} hr{i !== 1 ? 's' : ''}</option>
+        ))}
+      </select>
+      <select value={mins} onChange={e => update(hours, Number(e.target.value))} style={{ flex: 1 }}>
+        {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
+          <option key={m} value={m}>{m} min</option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 interface EditModalProps {
   isOpen: boolean;
@@ -249,25 +292,11 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
               </select>
             </div>
             <div className="form-group">
-              <label>Start Time</label>
-              <input type="time" value={form.startTime || ''} onChange={e => {
-                set('startTime', e.target.value);
-                // Auto-calculate duration
-                if (e.target.value && form.endTime) {
-                  const dur = calcDuration(e.target.value, form.endTime);
-                  set('duration', dur);
-                }
-              }} />
-            </div>
-            <div className="form-group">
-              <label>End Time</label>
-              <input type="time" value={form.endTime || ''} onChange={e => {
-                set('endTime', e.target.value);
-                if (form.startTime && e.target.value) {
-                  const dur = calcDuration(form.startTime, e.target.value);
-                  set('duration', dur);
-                }
-              }} />
+              <label>Duration</label>
+              <DurationPicker
+                value={form.duration}
+                onChange={val => set('duration', val)}
+              />
             </div>
             <div className="form-group">
               <label>Source / Channel</label>
