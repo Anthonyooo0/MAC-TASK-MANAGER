@@ -116,7 +116,7 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                     >
                       {meeting && (
                         <div className="preset-meeting" data-duration={meeting.duration}>
-                          🔒 {meeting.title}
+                          {meeting.title}
                         </div>
                       )}
                       {tasksInSlot.map(task => (

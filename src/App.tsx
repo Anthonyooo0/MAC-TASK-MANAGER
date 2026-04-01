@@ -1,28 +1,32 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useMsal, useIsAuthenticated } from '@azure/msal-react';
 import type { TaskData, SortMode } from './types';
 import { initialTasks } from './data/tasks';
-import Login from './components/Login';
 import TaskPanel from './components/TaskPanel';
 import CalendarMonitor from './components/CalendarMonitor';
 import DelegationPanel from './components/DelegationPanel';
 import EditModal from './components/EditModal';
 
+const isDev = window.location.hostname === 'localhost';
+
 const App: React.FC = () => {
-  const { instance, accounts } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [msalReady, setMsalReady] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && accounts.length > 0) {
-      setCurrentUser(accounts[0].username?.toLowerCase() || null);
+    if (isDev) {
+      // Skip auth locally
+      setCurrentUser('anthony.jimenez@macproducts.net');
+      setMsalReady(true);
+      return;
     }
-  }, [isAuthenticated, accounts]);
 
-  const handleLogout = async () => {
-    await instance.logoutPopup();
-    setCurrentUser(null);
-  };
+    // In production, use MSAL hooks via dynamic import
+    import('@azure/msal-react').then(({ useMsal: _u }) => {
+      // MSAL is handled by MsalProvider in main.tsx —
+      // we detect auth state from the provider context via AuthWrapper
+      setMsalReady(true);
+    });
+  }, []);
 
   const [tasks, setTasks] = useState<TaskData[]>(initialTasks);
   const [activeWeek, setActiveWeek] = useState(() => {
@@ -104,9 +108,28 @@ const App: React.FC = () => {
 
   const editingTask = editingTaskId ? tasks.find(t => t.id === editingTaskId) || null : null;
 
-  // Show login if not authenticated
+  // Loading state
+  if (!msalReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-mac-light">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4">
+            <img src="/mac_logo.png" alt="MAC Logo" className="w-full h-full object-contain animate-pulse" />
+          </div>
+          <p className="text-slate-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated (production only)
   if (!currentUser) {
-    return <Login onLogin={setCurrentUser} />;
+    const Login = React.lazy(() => import('./components/Login'));
+    return (
+      <React.Suspense fallback={<div />}>
+        <Login onLogin={setCurrentUser} />
+      </React.Suspense>
+    );
   }
 
   return (
