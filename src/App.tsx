@@ -6,6 +6,7 @@ import CalendarMonitor from './components/CalendarMonitor';
 import type { CalendarMeeting } from './components/CalendarMonitor';
 import DelegationPanel from './components/DelegationPanel';
 import EditModal from './components/EditModal';
+import type { MacUser } from './components/EditModal';
 import { getWeekStartDate } from './utils';
 
 const isDev = window.location.hostname === 'localhost';
@@ -22,14 +23,28 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [msalReady, setMsalReady] = useState(false);
   const [outlookMeetings, setOutlookMeetings] = useState<CalendarMeeting[]>(isDev ? devMeetings : []);
+  const [users, setUsers] = useState<MacUser[]>([]);
 
   useEffect(() => {
     if (isDev) {
       setCurrentUser('anthony.jimenez@macproducts.net');
+      setUsers([
+        { displayName: 'Anthony Jimenez', email: 'anthony.jimenez@macproducts.net' },
+        { displayName: 'Juan Ortiz', email: 'juan.ortiz@macproducts.net' },
+        { displayName: 'Edward Russnow', email: 'edward.russnow@macproducts.net' },
+        { displayName: 'Nick Garcia', email: 'nick.garcia@macproducts.net' },
+        { displayName: 'Angel C. Leon', email: 'angel.leon@macproducts.net' },
+      ]);
       setMsalReady(true);
       return;
     }
     import('@azure/msal-react').then(() => setMsalReady(true));
+
+    // Fetch org users for delegation dropdown
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setUsers(data); })
+      .catch(err => console.warn('Failed to load users:', err));
   }, []);
 
   const [tasks, setTasks] = useState<TaskData[]>(initialTasks);
@@ -217,6 +232,8 @@ const App: React.FC = () => {
         isOpen={modalOpen}
         task={editingTask}
         isNew={isNewTask}
+        currentUser={currentUser}
+        users={users}
         onClose={() => setModalOpen(false)}
         onSave={handleSaveTask}
       />

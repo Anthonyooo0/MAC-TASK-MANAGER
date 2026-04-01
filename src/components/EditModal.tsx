@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import type { TaskData } from '../types';
 
+export interface MacUser {
+  displayName: string;
+  email: string;
+}
+
 interface EditModalProps {
   isOpen: boolean;
   task: TaskData | null;
   isNew: boolean;
+  currentUser: string;
+  users: MacUser[];
   onClose: () => void;
   onSave: (task: TaskData) => void;
 }
@@ -32,7 +39,7 @@ const defaultTask: TaskData = {
   location: 'notebook',
 };
 
-const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, onClose, onSave }) => {
+const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser, users, onClose, onSave }) => {
   const [form, setForm] = useState<TaskData>(defaultTask);
 
   useEffect(() => {
@@ -47,7 +54,7 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, onClose, onS
     setForm(prev => ({ ...prev, [field]: value } as TaskData));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     let status = form.status;
     let delegated = form.delegated || '';
 
@@ -60,6 +67,29 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, onClose, onS
       status,
       delegated,
     };
+
+    // Send email notification if newly delegated
+    const wasDelegated = task?.delegated || '';
+    const isDelegatedNow = finalTask.status === 'Delegated' && finalTask.delegated;
+    const delegateChanged = isDelegatedNow && finalTask.delegated !== wasDelegated;
+
+    if (delegateChanged && finalTask.delegated) {
+      const assignee = users.find(u => u.email === finalTask.delegated);
+      try {
+        await fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            toEmail: finalTask.delegated,
+            toName: assignee?.displayName || '',
+            taskTitle: finalTask.title,
+            assignedBy: currentUser,
+          }),
+        });
+      } catch (err) {
+        console.warn('Failed to send notification:', err);
+      }
+    }
 
     onSave(finalTask);
     onClose();
@@ -112,7 +142,14 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, onClose, onS
             </div>
             <div className="form-group">
               <label>Delegated To</label>
-              <input type="text" value={form.delegated || ''} onChange={e => set('delegated', e.target.value)} placeholder="Name or Team..." />
+              <select value={form.delegated || ''} onChange={e => set('delegated', e.target.value)}>
+                <option value="">-- Select User --</option>
+                {users.map(u => (
+                  <option key={u.email} value={u.email}>
+                    {u.displayName} ({u.email.split('@')[0]})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="section-title">Time Blocking & Dates</div>
