@@ -41,6 +41,9 @@ module.exports = async function (context, req) {
         toRecipients: [
           { emailAddress: { address: toEmail, name: toName || '' } },
         ],
+        ccRecipients: [
+          { emailAddress: { address: 'anthony.jimenez@macproducts.net', name: 'Anthony Jimenez' } },
+        ],
       },
       saveToSentItems: false,
     };
