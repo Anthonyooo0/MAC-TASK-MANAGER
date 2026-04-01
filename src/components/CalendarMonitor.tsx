@@ -95,56 +95,69 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
               ))}
             </div>
 
-            {schedule.map((slot, slotIndex) => (
-              <div className="calendar-row" key={slotIndex}>
-                <div className="time-label">
-                  {slot.time}
-                  <br />
-                  <span>{slot.label}</span>
-                </div>
-                {Array.from({ length: 5 }, (_, dayIndex) => {
-                  // Meetings starting in this slot
-                  const meetingsStarting = outlookMeetings.filter(
-                    m => m.day === dayIndex && m.startSlot === slotIndex
-                  );
-                  // Meetings continuing through this slot (started earlier)
-                  const meetingsContinuing = outlookMeetings.filter(
-                    m => m.day === dayIndex && m.startSlot !== slotIndex && m.slots.includes(slotIndex)
-                  );
-                  const tasksInSlot = calendarTasks.filter(
-                    t => t.calendarPosition?.week === activeWeek &&
-                      t.calendarPosition?.day === dayIndex &&
-                      t.calendarPosition?.slot === slotIndex
-                  );
+            {/* Grid-based calendar with spanning meetings */}
+            <div className="calendar-grid">
+              {/* Drop zone cells - one per slot per day */}
+              {schedule.map((slot, slotIndex) => (
+                <React.Fragment key={slotIndex}>
+                  <div className="time-label" style={{ gridRow: slotIndex + 1, gridColumn: 1 }}>
+                    {slot.time}
+                    <br />
+                    <span>{slot.label}</span>
+                  </div>
+                  {Array.from({ length: 5 }, (_, dayIndex) => {
+                    const tasksInSlot = calendarTasks.filter(
+                      t => t.calendarPosition?.week === activeWeek &&
+                        t.calendarPosition?.day === dayIndex &&
+                        t.calendarPosition?.slot === slotIndex
+                    );
+                    // Check if a meeting occupies this cell (to hide drop zone content behind it)
+                    const hasMeetingHere = outlookMeetings.some(
+                      m => m.day === dayIndex && m.slots.includes(slotIndex)
+                    );
 
-                  return (
-                    <DropZone
-                      key={dayIndex}
-                      day={dayIndex}
-                      slot={slotIndex}
-                      onDrop={onDropToCalendar}
-                    >
-                      {meetingsStarting.map(meeting => (
-                        <div key={meeting.id} className="preset-meeting meeting-start" data-duration={meeting.duration}>
-                          <strong>{meeting.title}</strong>
-                          <span className="meeting-time">{meeting.timeLabel}</span>
-                        </div>
-                      ))}
-                      {meetingsContinuing.map(meeting => (
-                        <div key={meeting.id} className="preset-meeting meeting-continue" data-duration={meeting.duration} />
-                      ))}
-                      {tasksInSlot.map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onClick={() => onEditTask(task.id)}
-                        />
-                      ))}
-                    </DropZone>
-                  );
-                })}
-              </div>
-            ))}
+                    return (
+                      <DropZone
+                        key={dayIndex}
+                        day={dayIndex}
+                        slot={slotIndex}
+                        style={{ gridRow: slotIndex + 1, gridColumn: dayIndex + 2 }}
+                        onDrop={onDropToCalendar}
+                      >
+                        {!hasMeetingHere && tasksInSlot.map(task => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onClick={() => onEditTask(task.id)}
+                          />
+                        ))}
+                      </DropZone>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+
+              {/* Spanning meeting overlays */}
+              {outlookMeetings.map(meeting => {
+                const rowStart = meeting.startSlot + 1;
+                const rowEnd = rowStart + meeting.slots.length;
+                const col = meeting.day + 2;
+
+                return (
+                  <div
+                    key={meeting.id}
+                    className="meeting-span"
+                    style={{
+                      gridRow: `${rowStart} / ${rowEnd}`,
+                      gridColumn: col,
+                    }}
+                  >
+                    <strong>{meeting.title}</strong>
+                    <span className="meeting-time">{meeting.timeLabel}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -157,14 +170,16 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
 const DropZone: React.FC<{
   day: number;
   slot: number;
+  style: React.CSSProperties;
   onDrop: (taskId: string, day: number, slot: number) => void;
   children: React.ReactNode;
-}> = ({ day, slot, onDrop, children }) => {
+}> = ({ day, slot, style, onDrop, children }) => {
   const [isDragOver, setIsDragOver] = React.useState(false);
 
   return (
     <div
       className={`drop-zone ${isDragOver ? 'drag-over' : ''}`}
+      style={style}
       onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
       onDragEnter={e => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={() => setIsDragOver(false)}
