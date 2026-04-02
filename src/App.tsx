@@ -149,7 +149,9 @@ const App: React.FC = () => {
       method,
       headers: { 'Content-Type': 'application/json', 'x-user-email': currentUserRef.current },
       body: JSON.stringify(task),
-    }).catch(err => console.warn('Failed to persist task:', err));
+    })
+      .then(res => { if (!res.ok) return res.text().then(t => console.error('Persist failed:', res.status, t)); })
+      .catch(err => console.warn('Failed to persist task:', err));
   }, []);
 
   const [activeWeek, setActiveWeek] = useState(() => {
