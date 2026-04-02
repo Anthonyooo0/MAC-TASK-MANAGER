@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import type { TaskData } from '../types';
 import { schedule } from '../data/meetings';
 import { getWeekDates, parseDurationToMinutes } from '../utils';
@@ -112,6 +113,81 @@ const RESPONSE_COLORS: Record<string, string> = {
   none: '#95a5a6',
 };
 
+const MeetingTooltip: React.FC<{ meeting: CalendarMeeting; pos: { top: number; left: number }; onClose: () => void }> = ({ meeting, pos, onClose }) => {
+  React.useEffect(() => {
+    const close = (e: MouseEvent) => {
+      const el = document.getElementById('meeting-tooltip-portal');
+      if (el && !el.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [onClose]);
+
+  return ReactDOM.createPortal(
+    <div
+      id="meeting-tooltip-portal"
+      className="meeting-tooltip"
+      style={{ top: pos.top, left: pos.left }}
+    >
+      <div className="meeting-tooltip-title">{meeting.title}</div>
+      <div className="meeting-tooltip-time">{meeting.timeLabel} ({meeting.duration})</div>
+
+      {meeting.location && (
+        <div className="meeting-tooltip-row">
+          <span className="meeting-tooltip-label">Location</span>
+          <span>{meeting.location}</span>
+        </div>
+      )}
+
+      {meeting.organizer && (
+        <div className="meeting-tooltip-row">
+          <span className="meeting-tooltip-label">Organizer</span>
+          <span>{meeting.organizer}</span>
+        </div>
+      )}
+
+      {meeting.myResponse && (
+        <div className="meeting-tooltip-row">
+          <span className="meeting-tooltip-label">Your RSVP</span>
+          <span style={{ color: RESPONSE_COLORS[meeting.myResponse] || '#636e72', fontWeight: 700 }}>
+            {RESPONSE_LABELS[meeting.myResponse] || meeting.myResponse}
+          </span>
+        </div>
+      )}
+
+      {meeting.isOnline && (
+        <div className="meeting-tooltip-row">
+          <span className="meeting-tooltip-label">Online</span>
+          <span style={{ color: '#3182ce' }}>Teams Meeting</span>
+        </div>
+      )}
+
+      {meeting.attendees && meeting.attendees.length > 0 && (
+        <div className="meeting-tooltip-attendees">
+          <span className="meeting-tooltip-label">Attendees ({meeting.attendees.length})</span>
+          <div className="meeting-tooltip-list">
+            {meeting.attendees.map((a, i) => (
+              <div key={i} className="meeting-tooltip-attendee">
+                <span
+                  className="attendee-dot"
+                  style={{ background: RESPONSE_COLORS[a.response] || '#95a5a6' }}
+                />
+                <span className="attendee-name">{a.name || a.email.split('@')[0]}</span>
+                <span className="attendee-status">{RESPONSE_LABELS[a.response] || a.response}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {meeting.bodyPreview && (
+        <div className="meeting-tooltip-body">{meeting.bodyPreview}</div>
+      )}
+    </div>,
+    document.body
+  );
+};
+
 const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
   const [open, setOpen] = React.useState(false);
   const [pos, setPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -125,12 +201,11 @@ const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
     }
     const rect = spanRef.current?.getBoundingClientRect();
     if (rect) {
-      const tooltipH = 300;
       const tooltipW = 280;
       let top = rect.bottom + 4;
       let left = rect.left + rect.width / 2 - tooltipW / 2;
       // Flip above if it would overflow below viewport
-      if (top + tooltipH > window.innerHeight) top = rect.top - tooltipH - 4;
+      if (top + 350 > window.innerHeight) top = Math.max(8, rect.top - 350 - 4);
       // Keep within horizontal bounds
       if (left < 8) left = 8;
       if (left + tooltipW > window.innerWidth - 8) left = window.innerWidth - tooltipW - 8;
@@ -138,14 +213,6 @@ const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
     }
     setOpen(true);
   };
-
-  // Close on outside click
-  React.useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
 
   return (
     <div
@@ -155,6 +222,7 @@ const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
         position: 'absolute',
         top: `${meeting.topPercent}%`,
         height: `${meeting.heightPercent}%`,
+        minHeight: '28px',
         left: '2px',
         right: '2px',
       }}
@@ -163,68 +231,7 @@ const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
       <strong>{meeting.title}</strong>
       <span className="meeting-time">{meeting.timeLabel}</span>
 
-      {open && (
-        <div
-          className="meeting-tooltip"
-          style={{ top: pos.top, left: pos.left }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="meeting-tooltip-title">{meeting.title}</div>
-          <div className="meeting-tooltip-time">{meeting.timeLabel} ({meeting.duration})</div>
-
-          {meeting.location && (
-            <div className="meeting-tooltip-row">
-              <span className="meeting-tooltip-label">Location</span>
-              <span>{meeting.location}</span>
-            </div>
-          )}
-
-          {meeting.organizer && (
-            <div className="meeting-tooltip-row">
-              <span className="meeting-tooltip-label">Organizer</span>
-              <span>{meeting.organizer}</span>
-            </div>
-          )}
-
-          {meeting.myResponse && (
-            <div className="meeting-tooltip-row">
-              <span className="meeting-tooltip-label">Your RSVP</span>
-              <span style={{ color: RESPONSE_COLORS[meeting.myResponse] || '#636e72', fontWeight: 700 }}>
-                {RESPONSE_LABELS[meeting.myResponse] || meeting.myResponse}
-              </span>
-            </div>
-          )}
-
-          {meeting.isOnline && (
-            <div className="meeting-tooltip-row">
-              <span className="meeting-tooltip-label">Online</span>
-              <span style={{ color: '#3182ce' }}>Teams Meeting</span>
-            </div>
-          )}
-
-          {meeting.attendees && meeting.attendees.length > 0 && (
-            <div className="meeting-tooltip-attendees">
-              <span className="meeting-tooltip-label">Attendees ({meeting.attendees.length})</span>
-              <div className="meeting-tooltip-list">
-                {meeting.attendees.map((a, i) => (
-                  <div key={i} className="meeting-tooltip-attendee">
-                    <span
-                      className="attendee-dot"
-                      style={{ background: RESPONSE_COLORS[a.response] || '#95a5a6' }}
-                    />
-                    <span className="attendee-name">{a.name || a.email.split('@')[0]}</span>
-                    <span className="attendee-status">{RESPONSE_LABELS[a.response] || a.response}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {meeting.bodyPreview && (
-            <div className="meeting-tooltip-body">{meeting.bodyPreview}</div>
-          )}
-        </div>
-      )}
+      {open && <MeetingTooltip meeting={meeting} pos={pos} onClose={() => setOpen(false)} />}
     </div>
   );
 };

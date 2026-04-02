@@ -201,8 +201,8 @@ body, html {
 }
 .meeting-span {
   background: #e2f0fb; border-left: 4px solid #0984e3; border-radius: 4px;
-  padding: 6px 8px; font-size: 0.75em; color: #0d3b84; font-weight: 700;
-  display: flex; flex-direction: column; gap: 2px;
+  padding: 4px 6px; font-size: 0.75em; color: #0d3b84; font-weight: 700;
+  display: flex; flex-direction: column; gap: 1px; min-height: 28px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
   pointer-events: auto; cursor: pointer;
 }
