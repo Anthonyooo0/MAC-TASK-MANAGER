@@ -58,8 +58,79 @@ const App: React.FC = () => {
   }, []);
 
   const [tasks, setTasks] = useState<TaskData[]>(initialTasks);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
+
+  // Load tasks from the database on login (production) or localStorage (dev)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    if (isDev) {
+      const saved = localStorage.getItem('mac-tasks');
+      if (saved) {
+        try {
+          setTasks(JSON.parse(saved));
+        } catch { /* ignore bad data */ }
+      }
+      setTasksLoaded(true);
+      return;
+    }
+
+    fetch('/api/tasks', {
+      headers: { 'x-user-email': currentUser },
+    })
+      .then(res => res.json())
+      .then((rows: Record<string, unknown>[]) => {
+        if (rows && rows.length > 0) {
+          const mapped: TaskData[] = rows.map((r: Record<string, unknown>) => ({
+            id: r.id as string,
+            userEmail: r.user_email as string,
+            title: r.title as string,
+            category: r.category as TaskData['category'],
+            priority: r.priority as TaskData['priority'],
+            status: r.status as TaskData['status'],
+            duration: (r.duration as string) || '30m',
+            startTime: (r.start_time as string) || '',
+            endTime: (r.end_time as string) || '',
+            source: (r.source as string) || '',
+            delegated: (r.delegated as string) || '',
+            energy: (r.energy as string) || '',
+            requester: (r.requester as string) || '',
+            received: (r.received as string) || '',
+            due: (r.due as string) || '',
+            start: (r.start_date as string) || '',
+            parent: (r.parent as string) || '',
+            tags: (r.tags as string) || '',
+            waiting: (r.waiting as string) || '',
+            nextaction: (r.nextaction as string) || '',
+            links: (r.links as string) || '',
+            notes: (r.notes as string) || '',
+            location: (r.location as TaskData['location']) || 'notebook',
+            calendarPosition: r.calendar_week != null ? {
+              week: r.calendar_week as number,
+              day: r.calendar_day as number,
+              slot: r.calendar_slot as number,
+            } : undefined,
+            pendingDelegation: !!(r.pending_delegation),
+            delegatedBy: (r.delegated_by as string) || '',
+          }));
+          setTasks(mapped);
+        }
+        setTasksLoaded(true);
+      })
+      .catch(err => {
+        console.warn('Failed to load tasks from API:', err);
+        setTasksLoaded(true);
+      });
+  }, [currentUser]);
+
+  // Save to localStorage in dev mode whenever tasks change
+  useEffect(() => {
+    if (isDev && tasksLoaded) {
+      localStorage.setItem('mac-tasks', JSON.stringify(tasks));
+    }
+  }, [tasks, tasksLoaded]);
 
   // Persist a task to the API (fire-and-forget in production)
   const persistTask = useCallback((task: TaskData, method: 'POST' | 'PUT' = 'PUT') => {
