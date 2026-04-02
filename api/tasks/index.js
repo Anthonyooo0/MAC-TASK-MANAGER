@@ -109,6 +109,7 @@ module.exports = async function (context, req) {
       context.res = { status: 400, body: { error: 'Invalid request' } };
     }
   } catch (err) {
-    context.res = { status: 500, body: { error: err.message } };
+    context.log.error('Tasks API error:', err);
+    context.res = { status: 500, body: { error: err.message, stack: err.stack } };
   }
 };

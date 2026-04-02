@@ -81,7 +81,7 @@ const App: React.FC = () => {
       headers: { 'x-user-email': currentUser },
     })
       .then(res => {
-        if (!res.ok) throw new Error(`API responded with ${res.status}`);
+        if (!res.ok) return res.text().then(t => { throw new Error(`API responded with ${res.status}: ${t}`); });
         return res.json();
       })
       .then((rows: Record<string, unknown>[]) => {
