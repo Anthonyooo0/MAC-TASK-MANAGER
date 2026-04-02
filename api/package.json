@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {},
   "dependencies": {
+    "@azure/identity": "^4.6.0",
     "mssql": "^12.2.1"
   }
 }
