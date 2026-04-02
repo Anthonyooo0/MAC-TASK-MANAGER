@@ -116,6 +116,15 @@ const App: React.FC = () => {
             delegatedBy: (r.delegated_by as string) || '',
           }));
           setTasks(mapped);
+        } else {
+          // First time user — seed initial tasks to the database
+          initialTasks.forEach(task => {
+            fetch('/api/tasks', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-user-email': currentUser },
+              body: JSON.stringify(task),
+            }).catch(() => {});
+          });
         }
         setTasksLoaded(true);
       })

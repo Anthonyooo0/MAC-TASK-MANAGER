@@ -55,7 +55,7 @@ module.exports = async function (context, req) {
 
     } else if (method === 'PUT' && id) {
       const t = req.body;
-      await pool.request()
+      const request = pool.request()
         .input('id', sql.NVarChar, id)
         .input('user_email', sql.NVarChar, userEmail)
         .input('title', sql.NVarChar, t.title)
@@ -79,13 +79,23 @@ module.exports = async function (context, req) {
         .input('links', sql.NVarChar, t.links || '')
         .input('notes', sql.NVarChar, t.notes || '')
         .input('location', sql.NVarChar, t.location || 'notebook')
-        .input('calendar_week', sql.Int, t.calendarPosition?.week || null)
-        .input('calendar_day', sql.Int, t.calendarPosition?.day || null)
-        .input('calendar_slot', sql.Int, t.calendarPosition?.slot || null)
+        .input('calendar_week', sql.Int, t.calendarPosition?.week ?? null)
+        .input('calendar_day', sql.Int, t.calendarPosition?.day ?? null)
+        .input('calendar_slot', sql.Int, t.calendarPosition?.slot ?? null)
         .input('pending_delegation', sql.Bit, t.pendingDelegation ? 1 : 0)
-        .input('delegated_by', sql.NVarChar, t.delegatedBy || '')
-        .query(`UPDATE tasks SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, start_time=@start_time, end_time=@end_time, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot, pending_delegation=@pending_delegation, delegated_by=@delegated_by
-                WHERE id=@id AND user_email=@user_email`);
+        .input('delegated_by', sql.NVarChar, t.delegatedBy || '');
+
+      // Upsert: update if exists, insert if not
+      await request.query(`
+        MERGE tasks AS target
+        USING (SELECT @id AS id, @user_email AS user_email) AS source
+        ON target.id = source.id AND target.user_email = source.user_email
+        WHEN MATCHED THEN
+          UPDATE SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, start_time=@start_time, end_time=@end_time, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot, pending_delegation=@pending_delegation, delegated_by=@delegated_by
+        WHEN NOT MATCHED THEN
+          INSERT (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by)
+          VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by);
+      `);
       context.res = { status: 200, body: { success: true } };
 
     } else if (method === 'DELETE' && id) {
