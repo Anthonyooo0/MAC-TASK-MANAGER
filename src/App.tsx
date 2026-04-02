@@ -302,16 +302,47 @@ const App: React.FC = () => {
     }));
   }, [persistTask]);
 
-  // Decline a pending delegated task — remove it from the user's list
+  // Decline a pending delegated task — return it to the original sender
   const handleDeclineDelegation = useCallback((taskId: string) => {
+    const declinedTask = tasks.find(t => t.id === taskId);
     setTasks(prev => prev.filter(t => t.id !== taskId));
-    if (!isDev && currentUser) {
+
+    if (!isDev && currentUser && declinedTask) {
+      // Delete from decliner's list
       fetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
         headers: { 'x-user-email': currentUser },
       }).catch(err => console.warn('Failed to delete declined task:', err));
+
+      // Return task to the original sender
+      if (declinedTask.delegatedBy) {
+        fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-email': declinedTask.delegatedBy,
+          },
+          body: JSON.stringify({
+            id: 'task-' + Date.now() + '-returned',
+            title: declinedTask.title,
+            category: declinedTask.category,
+            priority: declinedTask.priority,
+            status: 'Not Started',
+            duration: declinedTask.duration,
+            source: `Declined by ${currentUser}`,
+            startTime: declinedTask.startTime,
+            endTime: declinedTask.endTime,
+            requester: declinedTask.requester,
+            due: declinedTask.due,
+            notes: declinedTask.notes,
+            location: 'notebook',
+            pendingDelegation: true,
+            delegatedBy: currentUser,
+          }),
+        }).catch(err => console.warn('Failed to return task to sender:', err));
+      }
     }
-  }, [currentUser]);
+  }, [currentUser, tasks]);
 
   const handleEditTask = useCallback((taskId: string) => {
     setEditingTaskId(taskId);

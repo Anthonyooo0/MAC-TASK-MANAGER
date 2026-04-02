@@ -304,6 +304,15 @@ body, html {
   animation: pendingPulse 2s ease-in-out infinite alternate;
   box-shadow: 0 3px 10px rgba(230, 168, 23, 0.2);
 }
+.pending-delegation-banner.returned {
+  background: linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%);
+  border: 2px solid #e0a0a0;
+  border-left: 6px solid #e74c3c;
+  box-shadow: 0 3px 10px rgba(231, 76, 60, 0.15);
+}
+.pending-delegation-banner.returned .pending-delegation-header {
+  color: #c0392b;
+}
 .pending-delegation-header {
   font-size: 0.7em;
   font-weight: 800;

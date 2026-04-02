@@ -83,18 +83,29 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {pendingTasks.map(task => (
-          <div key={task.id} className="pending-delegation-banner">
-            <div className="pending-delegation-header">New Task Delegated to You</div>
-            <div className="pending-delegation-title">{task.title}</div>
-            <div className="pending-delegation-from">From: {task.delegatedBy || task.source}</div>
-            {task.due && <div className="pending-delegation-due">Due: {task.due}</div>}
-            <div className="pending-delegation-actions">
-              <button className="btn-accept" onClick={() => onAcceptDelegation(task.id)}>Accept</button>
-              <button className="btn-decline" onClick={() => onDeclineDelegation(task.id)}>Decline</button>
+        {pendingTasks.map(task => {
+          const isReturned = (task.source || '').startsWith('Declined by');
+          return (
+            <div key={task.id} className={`pending-delegation-banner ${isReturned ? 'returned' : ''}`}>
+              <div className="pending-delegation-header">
+                {isReturned ? 'Task Declined — Returned to You' : 'New Task Delegated to You'}
+              </div>
+              <div className="pending-delegation-title">{task.title}</div>
+              <div className="pending-delegation-from">
+                {isReturned ? task.source : `From: ${task.delegatedBy || task.source}`}
+              </div>
+              {task.due && <div className="pending-delegation-due">Due: {task.due}</div>}
+              <div className="pending-delegation-actions">
+                <button className="btn-accept" onClick={() => onAcceptDelegation(task.id)}>
+                  {isReturned ? 'Acknowledge' : 'Accept'}
+                </button>
+                {!isReturned && (
+                  <button className="btn-decline" onClick={() => onDeclineDelegation(task.id)}>Decline</button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {sortedTasks.map(task => {
           const isGhost = ghostTaskIds.has(task.id);
           return (
