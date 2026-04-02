@@ -80,7 +80,10 @@ const App: React.FC = () => {
     fetch('/api/tasks', {
       headers: { 'x-user-email': currentUser },
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`API responded with ${res.status}`);
+        return res.json();
+      })
       .then((rows: Record<string, unknown>[]) => {
         if (rows && rows.length > 0) {
           const mapped: TaskData[] = rows.map((r: Record<string, unknown>) => ({
