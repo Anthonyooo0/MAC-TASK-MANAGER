@@ -1,4 +1,12 @@
-const { getPool, sql } = require('../db');
+let getPool, sql;
+try {
+  ({ getPool, sql } = require('../db'));
+} catch (loadErr) {
+  module.exports = async function (context) {
+    context.res = { status: 500, body: { error: 'Module load failed: ' + loadErr.message } };
+  };
+  return;
+}
 
 module.exports = async function (context, req) {
   try {
