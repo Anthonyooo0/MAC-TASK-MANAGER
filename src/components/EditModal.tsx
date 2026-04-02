@@ -195,6 +195,8 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
             due: finalTask.due,
             notes: finalTask.notes,
             location: 'notebook',
+            pendingDelegation: true,
+            delegatedBy: currentUser,
           }),
         });
       } catch (err) {

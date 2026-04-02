@@ -47,8 +47,10 @@ module.exports = async function (context, req) {
         .input('calendar_week', sql.Int, t.calendarPosition?.week || null)
         .input('calendar_day', sql.Int, t.calendarPosition?.day || null)
         .input('calendar_slot', sql.Int, t.calendarPosition?.slot || null)
-        .query(`INSERT INTO tasks (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot)
-                VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot)`);
+        .input('pending_delegation', sql.Bit, t.pendingDelegation ? 1 : 0)
+        .input('delegated_by', sql.NVarChar, t.delegatedBy || '')
+        .query(`INSERT INTO tasks (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by)
+                VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by)`);
       context.res = { status: 201, body: { success: true } };
 
     } else if (method === 'PUT' && id) {
@@ -80,7 +82,9 @@ module.exports = async function (context, req) {
         .input('calendar_week', sql.Int, t.calendarPosition?.week || null)
         .input('calendar_day', sql.Int, t.calendarPosition?.day || null)
         .input('calendar_slot', sql.Int, t.calendarPosition?.slot || null)
-        .query(`UPDATE tasks SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, start_time=@start_time, end_time=@end_time, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot
+        .input('pending_delegation', sql.Bit, t.pendingDelegation ? 1 : 0)
+        .input('delegated_by', sql.NVarChar, t.delegatedBy || '')
+        .query(`UPDATE tasks SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, start_time=@start_time, end_time=@end_time, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot, pending_delegation=@pending_delegation, delegated_by=@delegated_by
                 WHERE id=@id AND user_email=@user_email`);
       context.res = { status: 200, body: { success: true } };
 

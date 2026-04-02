@@ -11,10 +11,13 @@ interface TaskPanelProps {
   onAddTask: () => void;
   onEditTask: (taskId: string) => void;
   onDrop: (taskId: string) => void;
+  onAcceptDelegation: (taskId: string) => void;
+  onDeclineDelegation: (taskId: string) => void;
 }
 
 const TaskPanel: React.FC<TaskPanelProps> = ({
-  tasks, ghostTaskIds, sortMode, users, onSortChange, onAddTask, onEditTask, onDrop
+  tasks, ghostTaskIds, sortMode, users, onSortChange, onAddTask, onEditTask, onDrop,
+  onAcceptDelegation, onDeclineDelegation
 }) => {
   const [isHovering, setIsHovering] = React.useState(false);
 
@@ -32,8 +35,12 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
     if (taskId) onDrop(taskId);
   };
 
-  // Sort tasks
-  const sortedTasks = [...tasks].sort((a, b) => {
+  // Split pending delegation tasks from regular tasks
+  const pendingTasks = tasks.filter(t => t.pendingDelegation);
+  const regularTasks = tasks.filter(t => !t.pendingDelegation);
+
+  // Sort regular tasks
+  const sortedTasks = [...regularTasks].sort((a, b) => {
     if (a.status === 'Completed' && b.status !== 'Completed') return 1;
     if (b.status === 'Completed' && a.status !== 'Completed') return -1;
 
@@ -76,6 +83,18 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {pendingTasks.map(task => (
+          <div key={task.id} className="pending-delegation-banner">
+            <div className="pending-delegation-header">New Task Delegated to You</div>
+            <div className="pending-delegation-title">{task.title}</div>
+            <div className="pending-delegation-from">From: {task.delegatedBy || task.source}</div>
+            {task.due && <div className="pending-delegation-due">Due: {task.due}</div>}
+            <div className="pending-delegation-actions">
+              <button className="btn-accept" onClick={() => onAcceptDelegation(task.id)}>Accept</button>
+              <button className="btn-decline" onClick={() => onDeclineDelegation(task.id)}>Decline</button>
+            </div>
+          </div>
+        ))}
         {sortedTasks.map(task => {
           const isGhost = ghostTaskIds.has(task.id);
           return (

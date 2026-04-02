@@ -315,6 +315,11 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                 const rowStart = span.startSlot + 1;
                 const rowEnd = rowStart + span.slotCount;
 
+                const catColor = task.category === 'project' ? '#ff4757'
+                  : task.category === 'admin' ? '#1e90ff'
+                  : task.category === 'initiative' ? '#2ed573'
+                  : '#9b59b6';
+
                 return (
                   <div
                     key={task.id + '-span'}
@@ -326,12 +331,18 @@ const CalendarMonitor: React.FC<CalendarMonitorProps> = ({
                   >
                     <div
                       className="task-span"
+                      draggable
+                      onDragStart={e => {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', task.id);
+                      }}
                       style={{
                         position: 'absolute',
                         top: `${span.topPercent}%`,
                         height: `${span.heightPercent}%`,
                         left: '2px',
                         right: '2px',
+                        borderLeftColor: catColor,
                       }}
                       onClick={() => onEditTask(task.id)}
                     >

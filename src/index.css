@@ -210,7 +210,8 @@ body, html {
 .meeting-span .meeting-time { font-size: 0.7em; font-weight: 600; opacity: 0.7; }
 
 .task-span {
-  background: #fff3e0; border-left: 4px solid #f39c12; border-radius: 4px;
+  background: #ffffff; border-left: 4px solid #ccc; border-radius: 4px;
+  border-top: 1px solid #f1f2f6; border-right: 1px solid #f1f2f6; border-bottom: 1px solid #f1f2f6;
   padding: 6px 8px; font-size: 0.75em; color: #2d3436; font-weight: 600;
   display: flex; flex-direction: column; gap: 2px; cursor: grab;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; pointer-events: auto;
@@ -290,6 +291,78 @@ body, html {
 .user-dropdown-item:hover, .user-dropdown-item.active { background: #e2f0fb; }
 .user-dropdown-name { font-size: 0.85em; font-weight: 600; color: #2d3436; }
 .user-dropdown-email { font-size: 0.7em; color: #636e72; }
+
+/* === Pending Delegation Banner === */
+.pending-delegation-banner {
+  background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
+  border: 2px solid #f0c040;
+  border-left: 6px solid #e6a817;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  animation: pendingPulse 2s ease-in-out infinite alternate;
+  box-shadow: 0 3px 10px rgba(230, 168, 23, 0.2);
+}
+.pending-delegation-header {
+  font-size: 0.7em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #b8860b;
+  margin-bottom: 6px;
+}
+.pending-delegation-title {
+  font-size: 0.9em;
+  font-weight: 700;
+  color: #2d3436;
+  margin-bottom: 4px;
+}
+.pending-delegation-from,
+.pending-delegation-due {
+  font-size: 0.75em;
+  color: #636e72;
+  margin-bottom: 2px;
+}
+.pending-delegation-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.btn-accept {
+  flex: 1;
+  padding: 7px 0;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
+}
+.btn-accept:hover { background: #219a52; transform: translateY(-1px); }
+.btn-decline {
+  flex: 1;
+  padding: 7px 0;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+}
+.btn-decline:hover { background: #c0392b; transform: translateY(-1px); }
+
+@keyframes pendingPulse {
+  0% { box-shadow: 0 3px 10px rgba(230, 168, 23, 0.2); }
+  100% { box-shadow: 0 3px 15px rgba(230, 168, 23, 0.4); }
+}
 
 /* === MAC Logo === */
 .mac-logo-container {

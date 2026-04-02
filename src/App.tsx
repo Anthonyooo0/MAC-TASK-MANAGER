@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import type { TaskData, SortMode } from './types';
 import { initialTasks } from './data/tasks';
 import TaskPanel from './components/TaskPanel';
@@ -58,6 +58,20 @@ const App: React.FC = () => {
   }, []);
 
   const [tasks, setTasks] = useState<TaskData[]>(initialTasks);
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+
+  // Persist a task to the API (fire-and-forget in production)
+  const persistTask = useCallback((task: TaskData, method: 'POST' | 'PUT' = 'PUT') => {
+    if (isDev || !currentUserRef.current) return;
+    const url = method === 'POST' ? '/api/tasks' : `/api/tasks/${task.id}`;
+    fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'x-user-email': currentUserRef.current },
+      body: JSON.stringify(task),
+    }).catch(err => console.warn('Failed to persist task:', err));
+  }, []);
+
   const [activeWeek, setActiveWeek] = useState(() => {
     const today = new Date();
     return Math.min(4, Math.ceil(today.getDate() / 7));
@@ -161,29 +175,58 @@ const App: React.FC = () => {
   const handleDropToNotebook = useCallback((taskId: string) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
-        return { ...t, location: 'notebook' as const, status: 'Not Started' as const, delegated: '', calendarPosition: undefined };
+        const updated = { ...t, location: 'notebook' as const, status: 'Not Started' as const, delegated: '', calendarPosition: undefined };
+        persistTask(updated);
+        return updated;
       }
       return t;
     }));
-  }, []);
+  }, [persistTask]);
 
   const handleDropToCalendar = useCallback((taskId: string, day: number, slot: number) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
-        return { ...t, location: 'calendar' as const, status: 'In Progress' as const, delegated: '', calendarPosition: { week: activeWeek, day, slot } };
+        const updated = { ...t, location: 'calendar' as const, status: 'In Progress' as const, delegated: '', calendarPosition: { week: activeWeek, day, slot } };
+        persistTask(updated);
+        return updated;
       }
       return t;
     }));
-  }, [activeWeek]);
+  }, [activeWeek, persistTask]);
 
   const handleDropToDelegation = useCallback((taskId: string) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
-        return { ...t, location: 'delegation' as const, status: 'Delegated' as const, calendarPosition: undefined };
+        const updated = { ...t, location: 'delegation' as const, status: 'Delegated' as const, calendarPosition: undefined };
+        persistTask(updated);
+        return updated;
       }
       return t;
     }));
-  }, []);
+  }, [persistTask]);
+
+  // Accept a pending delegated task
+  const handleAcceptDelegation = useCallback((taskId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        const updated = { ...t, pendingDelegation: false };
+        persistTask(updated);
+        return updated;
+      }
+      return t;
+    }));
+  }, [persistTask]);
+
+  // Decline a pending delegated task — remove it from the user's list
+  const handleDeclineDelegation = useCallback((taskId: string) => {
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+    if (!isDev && currentUser) {
+      fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: { 'x-user-email': currentUser },
+      }).catch(err => console.warn('Failed to delete declined task:', err));
+    }
+  }, [currentUser]);
 
   const handleEditTask = useCallback((taskId: string) => {
     setEditingTaskId(taskId);
@@ -200,22 +243,52 @@ const App: React.FC = () => {
   const handleSaveTask = useCallback((updatedTask: TaskData) => {
     setTasks(prev => {
       const exists = prev.find(t => t.id === updatedTask.id);
+      let result: TaskData[];
       if (exists) {
-        return prev.map(t => {
+        result = prev.map(t => {
           if (t.id === updatedTask.id) {
             let location = t.location;
             if (updatedTask.status === 'Delegated') location = 'delegation';
             else if (t.location === 'delegation') location = 'notebook';
-            return { ...updatedTask, location, calendarPosition: location === 'delegation' ? undefined : t.calendarPosition };
+            const saved = { ...updatedTask, location, calendarPosition: location === 'delegation' ? undefined : t.calendarPosition };
+            persistTask(saved);
+            return saved;
           }
           return t;
         });
       } else {
         const location = updatedTask.status === 'Delegated' ? 'delegation' as const : 'notebook' as const;
-        return [{ ...updatedTask, location }, ...prev];
+        const saved = { ...updatedTask, location };
+        persistTask(saved, 'POST');
+        result = [saved, ...prev];
       }
+
+      // Dev mode: simulate receiving a pending delegation for testing
+      if (isDev && updatedTask.status === 'Delegated' && updatedTask.delegated) {
+        const wasDelegated = exists?.delegated || '';
+        if (updatedTask.delegated !== wasDelegated) {
+          const pendingTask: TaskData = {
+            id: 'task-' + Date.now() + '-pending',
+            title: updatedTask.title,
+            category: updatedTask.category,
+            priority: updatedTask.priority,
+            status: 'Not Started',
+            duration: updatedTask.duration,
+            source: `Delegated by ${currentUserRef.current}`,
+            requester: currentUserRef.current || '',
+            due: updatedTask.due,
+            notes: updatedTask.notes,
+            location: 'notebook',
+            pendingDelegation: true,
+            delegatedBy: currentUserRef.current || '',
+          };
+          result = [pendingTask, ...result];
+        }
+      }
+
+      return result;
     });
-  }, []);
+  }, [persistTask]);
 
   const editingTask = editingTaskId ? tasks.find(t => t.id === editingTaskId) || null : null;
 
@@ -260,6 +333,8 @@ const App: React.FC = () => {
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
           onDrop={handleDropToNotebook}
+          onAcceptDelegation={handleAcceptDelegation}
+          onDeclineDelegation={handleDeclineDelegation}
         />
 
         <CalendarMonitor

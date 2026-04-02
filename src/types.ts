@@ -25,6 +25,8 @@ export interface TaskData {
   ghostId?: string;
   location: 'notebook' | 'calendar' | 'delegation';
   calendarPosition?: { week: number; day: number; slot: number };
+  pendingDelegation?: boolean;
+  delegatedBy?: string;
 }
 
 export interface PresetMeeting {

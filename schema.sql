@@ -30,6 +30,8 @@ CREATE TABLE tasks (
   calendar_week INT NULL,
   calendar_day  INT NULL,
   calendar_slot INT NULL,
+  pending_delegation BIT DEFAULT 0,
+  delegated_by  NVARCHAR(255) DEFAULT '',
   created_at    DATETIME2 DEFAULT GETUTCDATE()
 );
 
