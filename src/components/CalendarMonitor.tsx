@@ -113,10 +113,43 @@ const RESPONSE_COLORS: Record<string, string> = {
 };
 
 const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
-  const [hovered, setHovered] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
+  const [pos, setPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const spanRef = React.useRef<HTMLDivElement>(null);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = spanRef.current?.getBoundingClientRect();
+    if (rect) {
+      const tooltipH = 300;
+      const tooltipW = 280;
+      let top = rect.bottom + 4;
+      let left = rect.left + rect.width / 2 - tooltipW / 2;
+      // Flip above if it would overflow below viewport
+      if (top + tooltipH > window.innerHeight) top = rect.top - tooltipH - 4;
+      // Keep within horizontal bounds
+      if (left < 8) left = 8;
+      if (left + tooltipW > window.innerWidth - 8) left = window.innerWidth - tooltipW - 8;
+      setPos({ top, left });
+    }
+    setOpen(true);
+  };
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
 
   return (
     <div
+      ref={spanRef}
       className="meeting-span"
       style={{
         position: 'absolute',
@@ -125,14 +158,17 @@ const MeetingBlock: React.FC<{ meeting: CalendarMeeting }> = ({ meeting }) => {
         left: '2px',
         right: '2px',
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onClick={handleClick}
     >
       <strong>{meeting.title}</strong>
       <span className="meeting-time">{meeting.timeLabel}</span>
 
-      {hovered && (
-        <div className="meeting-tooltip">
+      {open && (
+        <div
+          className="meeting-tooltip"
+          style={{ top: pos.top, left: pos.left }}
+          onClick={e => e.stopPropagation()}
+        >
           <div className="meeting-tooltip-title">{meeting.title}</div>
           <div className="meeting-tooltip-time">{meeting.timeLabel} ({meeting.duration})</div>
 
