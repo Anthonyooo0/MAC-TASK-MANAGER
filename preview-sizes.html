@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MAC Task Manager — Preview Sizes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      padding: 40px 20px;
+    }
+    h1 {
+      font-size: 1.4em;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.3px;
+    }
+    h1 span { color: #3b82f6; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 900px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.2s, transform 0.1s;
+    }
+    .card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+    .device { font-size: 0.7em; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748b; }
+    .size-label { font-size: 1.3em; font-weight: 700; color: #f1f5f9; }
+    .desc { font-size: 0.8em; color: #94a3b8; line-height: 1.4; }
+    .open-btn {
+      margin-top: 6px;
+      padding: 9px 0;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.85em;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .open-btn:hover { opacity: 0.85; }
+    .btn-desktop  { background: #1d4ed8; color: white; }
+    .btn-laptop   { background: #0891b2; color: white; }
+    .btn-tablet   { background: #7c3aed; color: white; }
+    .btn-mobile   { background: #dc2626; color: white; }
+
+    .note {
+      font-size: 0.78em;
+      color: #64748b;
+      text-align: center;
+      max-width: 560px;
+      line-height: 1.6;
+    }
+    .note code {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.95em;
+      color: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+  <h1>MAC Task Manager — <span>Responsive Preview</span></h1>
+
+  <div class="grid">
+
+    <div class="card">
+      <span class="device">Large Monitor</span>
+      <span class="size-label">1920 × 1080</span>
+      <span class="desc">Full desktop experience. 3-panel desk layout, all chrome visible.</span>
+      <button class="open-btn btn-desktop" onclick="open('http://localhost:5173', '_blank', 'width=1920,height=1080')">Open 1920 × 1080</button>
+    </div>
+
+    <div class="card">
+      <span class="device">Standard Laptop</span>
+      <span class="size-label">1440 × 900</span>
+      <span class="desc">Common 14–15" laptop. Should fit without zooming out.</span>
+      <button class="open-btn btn-laptop" onclick="open('http://localhost:5173', '_blank', 'width=1440,height=900')">Open 1440 × 900</button>
+    </div>
+
+    <div class="card">
+      <span class="device">Small Laptop</span>
+      <span class="size-label">1280 × 800</span>
+      <span class="desc">13" laptop baseline. Panels compress fluidly via clamp().</span>
+      <button class="open-btn btn-laptop" onclick="open('http://localhost:5173', '_blank', 'width=1280,height=800')">Open 1280 × 800</button>
+    </div>
+
+    <div class="card">
+      <span class="device">iPad Pro Landscape</span>
+      <span class="size-label">1024 × 768</span>
+      <span class="desc">Tablet landscape. Bottom nav appears, one panel at a time.</span>
+      <button class="open-btn btn-tablet" onclick="open('http://localhost:5173', '_blank', 'width=1024,height=768')">Open 1024 × 768</button>
+    </div>
+
+    <div class="card">
+      <span class="device">iPad Portrait</span>
+      <span class="size-label">768 × 1024</span>
+      <span class="desc">iPad portrait mode. Full tab-based responsive layout.</span>
+      <button class="open-btn btn-tablet" onclick="open('http://localhost:5173', '_blank', 'width=768,height=1024')">Open 768 × 1024</button>
+    </div>
+
+    <div class="card">
+      <span class="device">iPhone 14 Pro</span>
+      <span class="size-label">390 × 844</span>
+      <span class="desc">Mobile portrait. Compact calendar grid, single-column modal.</span>
+      <button class="open-btn btn-mobile" onclick="open('http://localhost:5173', '_blank', 'width=390,height=844')">Open 390 × 844</button>
+    </div>
+
+    <div class="card">
+      <span class="device">Android Phone</span>
+      <span class="size-label">412 × 915</span>
+      <span class="desc">Larger Android viewport. Same mobile layout.</span>
+      <button class="open-btn btn-mobile" onclick="open('http://localhost:5173', '_blank', 'width=412,height=915')">Open 412 × 915</button>
+    </div>
+
+  </div>
+
+  <p class="note">
+    Make sure the dev server is running first: <code>npm run dev</code> in the project folder.
+    Each button opens a new window at the exact viewport size.
+  </p>
+</body>
+</html>
