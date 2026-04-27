@@ -117,6 +117,7 @@ const App: React.FC = () => {
             } : undefined,
             pendingDelegation: !!(r.pending_delegation),
             delegatedBy: (r.delegated_by as string) || '',
+            outlookEventId: (r.outlook_event_id as string) || '',
           }));
           setTasks(mapped);
         } else {
@@ -156,6 +157,62 @@ const App: React.FC = () => {
       .then(res => { if (!res.ok) return res.text().then(t => console.error('Persist failed:', res.status, t)); })
       .catch(err => console.warn('Failed to persist task:', err));
   }, []);
+
+  // Get a single shared MSAL instance for Graph calls
+  const msalInstanceRef = useRef<import('@azure/msal-browser').PublicClientApplication | null>(null);
+  const getMsal = useCallback(async () => {
+    if (msalInstanceRef.current) return msalInstanceRef.current;
+    const msalModule = await import('@azure/msal-browser');
+    const { msalConfig } = await import('./authConfig');
+    const instance = new msalModule.PublicClientApplication(msalConfig);
+    await instance.initialize();
+    msalInstanceRef.current = instance;
+    return instance;
+  }, []);
+
+  /**
+   * Sync a task's calendar state to Outlook.
+   * - If task has calendarPosition and no eventId: create event, return new id
+   * - If task has calendarPosition and existing eventId: update event
+   * - If task has no calendarPosition (removed from calendar) but has eventId: delete event
+   * Returns the (possibly new) outlookEventId so caller can persist it.
+   */
+  const syncTaskToOutlook = useCallback(async (task: TaskData): Promise<string> => {
+    if (isDev) return task.outlookEventId || '';
+    try {
+      const { createTaskEvent, updateTaskEvent, deleteTaskEvent } = await import('./graphService');
+      const instance = await getMsal();
+      const onCalendar = task.location === 'calendar' && !!task.calendarPosition;
+      const hasEvent = !!task.outlookEventId;
+
+      if (onCalendar && task.calendarPosition) {
+        const input = {
+          title: task.title,
+          category: task.category,
+          duration: task.duration,
+          notes: task.notes,
+          source: task.source,
+          weekNumber: task.calendarPosition.week,
+          day: task.calendarPosition.day,
+          slot: task.calendarPosition.slot,
+        };
+        if (hasEvent) {
+          await updateTaskEvent(instance, task.outlookEventId!, input);
+          return task.outlookEventId!;
+        } else {
+          const newId = await createTaskEvent(instance, input);
+          return newId || '';
+        }
+      } else if (hasEvent) {
+        await deleteTaskEvent(instance, task.outlookEventId!);
+        return '';
+      }
+      return task.outlookEventId || '';
+    } catch (err) {
+      console.warn('syncTaskToOutlook error', err);
+      return task.outlookEventId || '';
+    }
+  }, [getMsal]);
 
   const [activeWeek, setActiveWeek] = useState(() => {
     const today = new Date();
@@ -259,37 +316,70 @@ const App: React.FC = () => {
   const calendarTasks = tasks.filter(t => t.location === 'calendar');
 
   const handleDropToNotebook = useCallback((taskId: string) => {
+    let snapshot: TaskData | null = null;
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         const updated = { ...t, location: 'notebook' as const, status: 'Not Started' as const, delegated: '', calendarPosition: undefined };
+        snapshot = updated;
         persistTask(updated);
         return updated;
       }
       return t;
     }));
-  }, [persistTask]);
+    // Outlook sync: task moved off calendar → delete the event
+    if (snapshot) {
+      syncTaskToOutlook(snapshot).then(newId => {
+        if (newId !== snapshot!.outlookEventId) {
+          setTasks(prev => prev.map(t => t.id === taskId ? { ...t, outlookEventId: newId } : t));
+          persistTask({ ...snapshot!, outlookEventId: newId });
+        }
+      });
+    }
+  }, [persistTask, syncTaskToOutlook]);
 
   const handleDropToCalendar = useCallback((taskId: string, day: number, slot: number) => {
+    let snapshot: TaskData | null = null;
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         const updated = { ...t, location: 'calendar' as const, status: 'In Progress' as const, delegated: '', calendarPosition: { week: activeWeek, day, slot } };
+        snapshot = updated;
         persistTask(updated);
         return updated;
       }
       return t;
     }));
-  }, [activeWeek, persistTask]);
+    // Outlook sync: task placed on calendar → create or update event
+    if (snapshot) {
+      syncTaskToOutlook(snapshot).then(newId => {
+        if (newId && newId !== snapshot!.outlookEventId) {
+          setTasks(prev => prev.map(t => t.id === taskId ? { ...t, outlookEventId: newId } : t));
+          persistTask({ ...snapshot!, outlookEventId: newId });
+        }
+      });
+    }
+  }, [activeWeek, persistTask, syncTaskToOutlook]);
 
   const handleDropToDelegation = useCallback((taskId: string) => {
+    let snapshot: TaskData | null = null;
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         const updated = { ...t, location: 'delegation' as const, status: 'Delegated' as const, calendarPosition: undefined };
+        snapshot = updated;
         persistTask(updated);
         return updated;
       }
       return t;
     }));
-  }, [persistTask]);
+    // Outlook sync: delegated tasks shouldn't block your own calendar
+    if (snapshot) {
+      syncTaskToOutlook(snapshot).then(newId => {
+        if (newId !== snapshot!.outlookEventId) {
+          setTasks(prev => prev.map(t => t.id === taskId ? { ...t, outlookEventId: newId } : t));
+          persistTask({ ...snapshot!, outlookEventId: newId });
+        }
+      });
+    }
+  }, [persistTask, syncTaskToOutlook]);
 
   // Accept a pending delegated task
   const handleAcceptDelegation = useCallback((taskId: string) => {
@@ -345,6 +435,24 @@ const App: React.FC = () => {
     }
   }, [currentUser, tasks]);
 
+  const handleDeleteTask = useCallback((taskId: string) => {
+    const target = tasks.find(t => t.id === taskId);
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+    if (!isDev && currentUser) {
+      fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: { 'x-user-email': currentUser },
+      }).catch(err => console.warn('Failed to delete task:', err));
+
+      // If this task had an Outlook event, clean it up too
+      if (target?.outlookEventId) {
+        import('./graphService').then(({ deleteTaskEvent }) => {
+          getMsal().then(instance => deleteTaskEvent(instance, target.outlookEventId!));
+        });
+      }
+    }
+  }, [currentUser, tasks, getMsal]);
+
   const handleEditTask = useCallback((taskId: string) => {
     setEditingTaskId(taskId);
     setIsNewTask(false);
@@ -358,6 +466,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleSaveTask = useCallback((updatedTask: TaskData) => {
+    let savedSnapshot: TaskData | null = null;
     setTasks(prev => {
       const exists = prev.find(t => t.id === updatedTask.id);
       let result: TaskData[];
@@ -367,7 +476,8 @@ const App: React.FC = () => {
             let location = t.location;
             if (updatedTask.status === 'Delegated') location = 'delegation';
             else if (t.location === 'delegation') location = 'notebook';
-            const saved = { ...updatedTask, location, calendarPosition: location === 'delegation' ? undefined : t.calendarPosition };
+            const saved = { ...updatedTask, location, calendarPosition: location === 'delegation' ? undefined : t.calendarPosition, outlookEventId: t.outlookEventId };
+            savedSnapshot = saved;
             persistTask(saved);
             return saved;
           }
@@ -405,7 +515,18 @@ const App: React.FC = () => {
 
       return result;
     });
-  }, [persistTask]);
+
+    // After UI updates: if the task is on the calendar, push title/duration changes to Outlook
+    if (savedSnapshot) {
+      const snap = savedSnapshot as TaskData;
+      syncTaskToOutlook(snap).then(newId => {
+        if (newId !== snap.outlookEventId) {
+          setTasks(prev => prev.map(t => t.id === snap.id ? { ...t, outlookEventId: newId } : t));
+          persistTask({ ...snap, outlookEventId: newId });
+        }
+      });
+    }
+  }, [persistTask, syncTaskToOutlook]);
 
   const editingTask = editingTaskId ? tasks.find(t => t.id === editingTaskId) || null : null;
 
@@ -479,6 +600,7 @@ const App: React.FC = () => {
         users={users}
         onClose={() => setModalOpen(false)}
         onSave={handleSaveTask}
+        onDelete={handleDeleteTask}
       />
 
       {/* Mobile / Tablet Navigation Bar */}

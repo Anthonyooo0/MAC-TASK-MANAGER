@@ -57,6 +57,142 @@ export async function fetchCalendarEvents(
   return data.value || [];
 }
 
+// === Outlook event sync (write) =================================
+// Slot index → start hour (matches the calendar grid)
+const SLOT_START_HOURS = [8, 9, 11, 12, 13, 15];
+
+export interface TaskEventInput {
+  title: string;
+  category: string;
+  duration: string;        // e.g. "2h", "30m", "1h 30m"
+  notes?: string;
+  source?: string;
+  weekNumber: number;      // 1-4 (relative to "this week"); we'll resolve to a date
+  day: number;             // 0=Mon, 4=Fri
+  slot: number;            // 0-5
+}
+
+function parseDurationMinutes(d: string): number {
+  let m = 0;
+  const h = d.match(/(\d+(?:\.\d+)?)\s*h/i);
+  const mn = d.match(/(\d+)\s*m/i);
+  if (h) m += parseFloat(h[1]) * 60;
+  if (mn) m += parseInt(mn[1], 10);
+  return m || 30;
+}
+
+function getWeekStartLocal(weekNum: number): Date {
+  const today = new Date();
+  const dayIdx = today.getDay() || 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - dayIdx + 1);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() + (weekNum - 1) * 7);
+  return monday;
+}
+
+function buildEventPayload(input: TaskEventInput) {
+  const monday = getWeekStartLocal(input.weekNumber);
+  const eventDate = new Date(monday);
+  eventDate.setDate(monday.getDate() + input.day);
+
+  const startHour = SLOT_START_HOURS[input.slot] ?? 8;
+  const start = new Date(eventDate);
+  start.setHours(startHour, 0, 0, 0);
+
+  const durationMin = parseDurationMinutes(input.duration);
+  const end = new Date(start.getTime() + durationMin * 60_000);
+
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+  // Format as YYYY-MM-DDTHH:mm:ss in local time (Graph treats this as the given timeZone)
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`;
+
+  const categoryLabel = input.category.charAt(0).toUpperCase() + input.category.slice(1);
+  const bodyLines = [
+    `<p><strong>MAC Task Manager</strong> &mdash; ${categoryLabel}</p>`,
+    input.source ? `<p><em>Source:</em> ${input.source}</p>` : '',
+    input.notes ? `<p>${input.notes.replace(/\n/g, '<br>')}</p>` : '',
+    `<p style="font-size:11px;color:#888">Auto-created from MAC Task Manager. Editing this event in Outlook will not sync back.</p>`,
+  ].filter(Boolean).join('');
+
+  return {
+    subject: `[Task] ${input.title}`,
+    start: { dateTime: fmt(start), timeZone: tz },
+    end:   { dateTime: fmt(end),   timeZone: tz },
+    body: { contentType: 'HTML', content: bodyLines },
+    showAs: 'busy',
+    categories: [`MAC: ${categoryLabel}`],
+  };
+}
+
+/** Create an Outlook event for a task. Returns the new event id (or null on failure). */
+export async function createTaskEvent(
+  instance: IPublicClientApplication,
+  input: TaskEventInput,
+): Promise<string | null> {
+  try {
+    const token = await getAccessToken(instance);
+    const res = await fetch('https://graph.microsoft.com/v1.0/me/events', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildEventPayload(input)),
+    });
+    if (!res.ok) {
+      console.warn('createTaskEvent failed', res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return data.id || null;
+  } catch (err) {
+    console.warn('createTaskEvent error', err);
+    return null;
+  }
+}
+
+/** Update an existing Outlook event when a task changes time/duration/title. */
+export async function updateTaskEvent(
+  instance: IPublicClientApplication,
+  eventId: string,
+  input: TaskEventInput,
+): Promise<boolean> {
+  try {
+    const token = await getAccessToken(instance);
+    const res = await fetch(`https://graph.microsoft.com/v1.0/me/events/${eventId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildEventPayload(input)),
+    });
+    if (!res.ok) {
+      console.warn('updateTaskEvent failed', res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('updateTaskEvent error', err);
+    return false;
+  }
+}
+
+/** Delete an Outlook event when a task is removed from the calendar or deleted. */
+export async function deleteTaskEvent(
+  instance: IPublicClientApplication,
+  eventId: string,
+): Promise<boolean> {
+  try {
+    const token = await getAccessToken(instance);
+    const res = await fetch(`https://graph.microsoft.com/v1.0/me/events/${eventId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.ok || res.status === 404; // 404 = already gone, treat as success
+  } catch (err) {
+    console.warn('deleteTaskEvent error', err);
+    return false;
+  }
+}
+
 // Slot boundaries in hours
 const SLOT_BOUNDS = [
   { start: 8, end: 9 },   // slot 0: 8-9 AM

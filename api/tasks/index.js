@@ -57,8 +57,9 @@ module.exports = async function (context, req) {
         .input('calendar_slot', sql.Int, t.calendarPosition?.slot ?? null)
         .input('pending_delegation', sql.Bit, t.pendingDelegation ? 1 : 0)
         .input('delegated_by', sql.NVarChar, t.delegatedBy || '')
-        .query(`INSERT INTO tasks (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by)
-                VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by)`);
+        .input('outlook_event_id', sql.NVarChar, t.outlookEventId || '')
+        .query(`INSERT INTO tasks (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by, outlook_event_id)
+                VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by, @outlook_event_id)`);
       context.res = { status: 201, body: { success: true } };
 
     } else if (method === 'PUT' && id) {
@@ -91,7 +92,8 @@ module.exports = async function (context, req) {
         .input('calendar_day', sql.Int, t.calendarPosition?.day ?? null)
         .input('calendar_slot', sql.Int, t.calendarPosition?.slot ?? null)
         .input('pending_delegation', sql.Bit, t.pendingDelegation ? 1 : 0)
-        .input('delegated_by', sql.NVarChar, t.delegatedBy || '');
+        .input('delegated_by', sql.NVarChar, t.delegatedBy || '')
+        .input('outlook_event_id', sql.NVarChar, t.outlookEventId || '');
 
       // Upsert: update if exists, insert if not
       await request.query(`
@@ -99,10 +101,10 @@ module.exports = async function (context, req) {
         USING (SELECT @id AS id, @user_email AS user_email) AS src
         ON target.id = src.id AND target.user_email = src.user_email
         WHEN MATCHED THEN
-          UPDATE SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, start_time=@start_time, end_time=@end_time, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot, pending_delegation=@pending_delegation, delegated_by=@delegated_by
+          UPDATE SET title=@title, category=@category, priority=@priority, status=@status, duration=@duration, start_time=@start_time, end_time=@end_time, source=@source, delegated=@delegated, energy=@energy, requester=@requester, received=@received, due=@due, start_date=@start_date, parent=@parent, tags=@tags, waiting=@waiting, nextaction=@nextaction, links=@links, notes=@notes, location=@location, calendar_week=@calendar_week, calendar_day=@calendar_day, calendar_slot=@calendar_slot, pending_delegation=@pending_delegation, delegated_by=@delegated_by, outlook_event_id=@outlook_event_id
         WHEN NOT MATCHED THEN
-          INSERT (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by)
-          VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by);
+          INSERT (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by, outlook_event_id)
+          VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by, @outlook_event_id);
       `);
       context.res = { status: 200, body: { success: true } };
 

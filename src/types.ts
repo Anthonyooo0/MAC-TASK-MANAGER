@@ -27,6 +27,8 @@ export interface TaskData {
   calendarPosition?: { week: number; day: number; slot: number };
   pendingDelegation?: boolean;
   delegatedBy?: string;
+  // Outlook event sync
+  outlookEventId?: string;  // set when task is on the calendar and synced to Outlook
 }
 
 export interface PresetMeeting {
