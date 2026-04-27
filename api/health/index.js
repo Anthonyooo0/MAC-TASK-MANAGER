@@ -1,4 +1,12 @@
-module.exports = async function (context) {
+const ADMIN_EMAIL = 'anthony.jimenez@macproducts.net';
+
+module.exports = async function (context, req) {
+  const userEmail = (req.headers['x-user-email'] || '').toLowerCase();
+  if (userEmail !== ADMIN_EMAIL) {
+    context.res = { status: 403, body: { error: 'Forbidden' } };
+    return;
+  }
+
   const env = {
     DB_SERVER: process.env.DB_SERVER || '(not set)',
     DB_NAME: process.env.DB_NAME || '(not set)',
