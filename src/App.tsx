@@ -573,6 +573,7 @@ const App: React.FC = () => {
           onDrop={handleDropToNotebook}
           onAcceptDelegation={handleAcceptDelegation}
           onDeclineDelegation={handleDeclineDelegation}
+          onDeleteTask={handleDeleteTask}
         />
 
         <CalendarMonitor
@@ -589,6 +590,7 @@ const App: React.FC = () => {
           users={users}
           onEditTask={handleEditTask}
           onDrop={handleDropToDelegation}
+          onDeleteTask={handleDeleteTask}
         />
       </div>
 

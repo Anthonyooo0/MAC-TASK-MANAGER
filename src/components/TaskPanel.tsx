@@ -13,11 +13,12 @@ interface TaskPanelProps {
   onDrop: (taskId: string) => void;
   onAcceptDelegation: (taskId: string) => void;
   onDeclineDelegation: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
 const TaskPanel: React.FC<TaskPanelProps> = ({
   tasks, ghostTaskIds, sortMode, users, onSortChange, onAddTask, onEditTask, onDrop,
-  onAcceptDelegation, onDeclineDelegation
+  onAcceptDelegation, onDeclineDelegation, onDeleteTask
 }) => {
   const [isHovering, setIsHovering] = React.useState(false);
 
@@ -115,6 +116,7 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
               isGhost={isGhost}
               users={users}
               onClick={() => onEditTask(task.id)}
+              onDelete={onDeleteTask}
             />
           );
         })}

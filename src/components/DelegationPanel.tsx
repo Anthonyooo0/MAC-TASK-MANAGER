@@ -7,9 +7,10 @@ interface DelegationPanelProps {
   users: { displayName: string; email: string }[];
   onEditTask: (taskId: string) => void;
   onDrop: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
-const DelegationPanel: React.FC<DelegationPanelProps> = ({ tasks, users, onEditTask, onDrop }) => {
+const DelegationPanel: React.FC<DelegationPanelProps> = ({ tasks, users, onEditTask, onDrop, onDeleteTask }) => {
   const [isHovering, setIsHovering] = React.useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -41,6 +42,7 @@ const DelegationPanel: React.FC<DelegationPanelProps> = ({ tasks, users, onEditT
             task={task}
             users={users}
             onClick={() => onEditTask(task.id)}
+            onDelete={onDeleteTask}
           />
         ))}
       </div>

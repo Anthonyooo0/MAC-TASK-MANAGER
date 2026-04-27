@@ -7,9 +7,10 @@ interface TaskCardProps {
   isGhost?: boolean;
   users?: { displayName: string; email: string }[];
   onClick?: () => void;
+  onDelete?: (taskId: string) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, isGhost = false, users = [], onClick }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, isGhost = false, users = [], onClick, onDelete }) => {
   const priLabel = getPriorityLabel(task.priority);
   const isCompleted = task.status === 'Completed';
 
@@ -38,6 +39,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isGhost = false, users = [], 
       onClick={isGhost ? undefined : onClick}
     >
       <span className={`priority pri-${task.priority}`}>{priLabel}</span>
+      {!isGhost && onDelete && (
+        <button
+          className="task-delete-btn"
+          aria-label="Delete task"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.confirm(`Delete "${task.title}"?`)) {
+              onDelete(task.id);
+            }
+          }}
+        >
+          ×
+        </button>
+      )}
       <strong>{task.title}</strong>
       <br />
       <small>
