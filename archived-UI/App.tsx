@@ -553,19 +553,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="mac-app-shell">
-      <header className="mac-app-header">
-        <div className="mac-app-header-left">
-          <img src="/mac_logo.png" alt="MAC Products" className="mac-app-logo" />
-          <div>
-            <h1 className="mac-app-title">MAC Task Manager</h1>
-            <p className="mac-app-subtitle">{currentUser}</p>
-          </div>
-        </div>
-        <div className="mac-app-header-right">
-          <span className="mac-app-version">V1.0.0</span>
-        </div>
-      </header>
+    <>
+      <div className="mac-logo-container">
+        <img src="/mac_logo.png" alt="MAC Products" className="h-[60px] object-contain" />
+      </div>
+
+      <div className="wall" />
+      <div className="desk-surface" />
 
       <div className="workspace" data-panel={activeMobilePanel}>
         <TaskPanel
@@ -649,7 +643,7 @@ const App: React.FC = () => {
           Delegated
         </button>
       </nav>
-    </div>
+    </>
   );
 };
 

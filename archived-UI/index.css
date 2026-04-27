@@ -23,57 +23,54 @@ body, html {
   font-family: 'DM Sans', 'Inter', sans-serif;
   height: 100vh;
   width: 100vw;
-  background: #f0f4f8; /* mac-light */
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--wall-color);
   color: var(--ui-text-main);
 }
 
-/* === MAC APP SHELL === */
-.mac-app-shell {
-  display: flex; flex-direction: column;
-  height: 100vh; width: 100%; overflow: hidden;
-  background: #f0f4f8;
+/* === ENVIRONMENT === */
+.wall {
+  position: absolute; top: 0; left: 0; width: 100vw; min-width: 1400px; height: 75vh;
+  background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+  background-size: cover; background-position: center 30%; z-index: 1;
+}
+.wall::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 50%);
+  pointer-events: none;
+}
+.desk-surface {
+  position: absolute; bottom: 0; left: 0; right: 0; width: 100vw; min-width: 1400px; height: 25vh;
+  background-color: var(--desk-wood);
+  background-image:
+    linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 15%),
+    repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 2px, transparent 2px, transparent 8px);
+  border-top: 10px solid #2e1c0d;
+  box-shadow: inset 0 60px 80px rgba(0,0,0,0.6);
+  z-index: 2;
 }
 
-.mac-app-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 24px;
-  background: linear-gradient(180deg, #1a365d 0%, #1e3a5f 100%);
-  color: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  z-index: 20; flex-shrink: 0;
-}
-.mac-app-header-left { display: flex; align-items: center; gap: 14px; }
-.mac-app-logo { height: 36px; width: auto; object-fit: contain; background: white; padding: 4px 8px; border-radius: 6px; }
-.mac-app-title { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
-.mac-app-subtitle { margin: 2px 0 0 0; font-size: 11px; color: #a8c0e0; font-family: 'Space Mono', monospace; text-transform: lowercase; }
-.mac-app-version { font-family: 'Space Mono', monospace; font-size: 11px; color: #a8c0e0; letter-spacing: 1px; }
-
-/* === WORKSPACE LAYOUT === */
 .workspace {
-  flex: 1; min-height: 0; /* allows children to shrink */
-  display: grid;
-  grid-template-columns: 280px minmax(600px, 1fr) 280px;
-  gap: 16px; padding: 16px;
-  box-sizing: border-box; overflow: hidden;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100vh; min-width: 1400px;
+  display: flex; align-items: flex-end; justify-content: center; gap: 20px;
+  padding-bottom: 4vh; padding-left: 20px; padding-right: 20px;
+  box-sizing: border-box; z-index: 10;
 }
 
-/* === SIDE PANELS — clean MAC card === */
+/* === SIDE PANELS === */
 .side-panel {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  display: flex; flex-direction: column;
-  min-height: 0; overflow: hidden;
+  width: 270px; height: 60vh; background: #ffffff;
+  box-shadow: -5px 0 10px rgba(0,0,0,0.1), 20px 30px 50px rgba(0,0,0,0.6);
+  position: relative; display: flex; flex-direction: column; flex-shrink: 0;
 }
 
-#task-panel { padding: 16px; border-top: 4px solid #1a365d; }
-#delegation-panel { padding: 16px; border-top: 4px solid #3182ce; background: #fafbfd; }
+#task-panel { border-radius: 4px 15px 15px 4px; border-left: 25px solid #1a252c; padding: 15px 15px 15px 20px; }
+#delegation-panel { border-radius: 15px 4px 4px 15px; border-right: 25px solid #2980b9; padding: 15px 20px 15px 15px; background: #f8f9fa; }
 
 .side-panel h2 {
-  margin: 0 0 12px 0; color: #1a365d; font-size: 0.95em; font-weight: 700;
-  text-align: left; letter-spacing: 0.5px; text-transform: uppercase;
-  border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;
+  margin-top: 0; margin-bottom: 10px; color: var(--ui-text-main); font-size: 1.05em; font-weight: 700;
+  text-align: center; letter-spacing: -0.2px; border-bottom: 2px dashed #dfe6e9; padding-bottom: 12px;
 }
 
 .panel-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 5px; padding-bottom: 12px; border-bottom: 2px dashed #dfe6e9; }
@@ -163,27 +160,24 @@ body, html {
   box-shadow: inset 0 0 3px rgba(0,0,0,0.05); cursor: not-allowed;
 }
 
-/* === CALENDAR PANEL (replaces monitor chrome) === */
-#monitor-assembly {
-  display: flex; flex-direction: column; min-height: 0;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  overflow: hidden;
-}
+/* === MONITOR === */
+#monitor-assembly { flex-grow: 1; display: flex; flex-direction: column; align-items: center; position: relative; min-width: 750px; max-width: 1000px; }
 
 #monitor {
-  flex: 1; display: flex; flex-direction: column;
-  background: transparent; padding: 0; min-height: 0;
+  width: 100%; height: 60vh;
+  background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 15%, #b3b3b3 35%, #e6e6e6 50%, #ffffff 65%, #8c8c8c 100%);
+  padding: 14px 14px 28px 14px; border-radius: 12px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 0 4px rgba(255,255,255,1);
+  display: flex; flex-direction: column; position: relative; z-index: 3;
 }
 
 .monitor-screen {
-  flex: 1; display: flex; flex-direction: column; background: #ffffff;
-  min-height: 0; overflow: hidden;
+  flex-grow: 1; display: flex; flex-direction: column; background: var(--monitor-bg);
+  border-radius: 6px; overflow: hidden; border: 2px solid #222; box-shadow: inset 0 0 15px rgba(0,0,0,0.05);
 }
 
-.stand-neck, .stand-base { display: none; }
+.stand-neck { width: 110px; height: 35px; background: linear-gradient(to right, #8a8d91, #ffffff, #8a8d91); box-shadow: inset 0 10px 15px rgba(0,0,0,0.2); z-index: 2; }
+.stand-base { width: 340px; height: 14px; background: linear-gradient(to right, #a1a3a6, #ffffff, #a1a3a6); border-radius: 8px 8px 0 0; border-bottom: 4px solid #6b6c6e; box-shadow: 0 25px 35px rgba(0,0,0,0.4); z-index: 2; }
 
 .month-label {
   background: #1a365d; color: white; text-align: center; padding: 8px 15px;
@@ -395,7 +389,10 @@ body, html {
 }
 
 /* === MAC Logo === */
-.mac-logo-container { display: none; }
+.mac-logo-container {
+  position: absolute; top: 25px; left: 35px; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+}
 
 /* ==============================================
    RESPONSIVE DESIGN
@@ -409,20 +406,46 @@ body, html {
   #monitor-assembly { min-width: clamp(520px, 52vw, 950px); }
 }
 
-/* --- Laptop (1024px–1199px) --- */
-@media (max-width: 1199px) {
-  .workspace {
-    grid-template-columns: 240px minmax(0, 1fr) 240px;
-    gap: 12px; padding: 12px;
-  }
+/* --- Laptop (1024px–1099px) --- */
+@media (max-width: 1099px) {
+  .workspace { gap: 10px; padding-left: 10px; padding-right: 10px; }
+  .side-panel { width: clamp(170px, 14vw, 220px); height: 65vh; }
+  #task-panel { border-left-width: 16px; padding-left: 10px; }
+  #delegation-panel { border-right-width: 16px; padding-right: 10px; }
+  #monitor-assembly { min-width: clamp(400px, 46vw, 750px); }
 }
 
 /* --- Tablet / iPad (768px–1023px) --- */
 @media (max-width: 1023px) {
-  .workspace {
-    grid-template-columns: 1fr;
-    padding: 12px 12px 80px;
+  body, html {
     overflow-y: auto;
+    overflow-x: hidden;
+    height: auto;
+    min-height: 100dvh;
+  }
+  .wall {
+    min-width: unset;
+    height: 100%;
+    position: fixed;
+  }
+  .desk-surface { display: none; }
+  .workspace {
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: unset;
+    width: 100%;
+    height: auto;
+    min-height: calc(100dvh - 56px);
+    padding: 70px 20px 72px;
+    gap: 0;
+    z-index: 5;
+  }
+  .mac-logo-container {
+    left: 50%;
+    transform: translateX(-50%);
+    top: 12px;
   }
   /* Show only the active panel via data-panel attribute */
   .workspace[data-panel="notebook"] #monitor-assembly,
@@ -431,15 +454,27 @@ body, html {
   .workspace[data-panel="calendar"] #delegation-panel { display: none; }
   .workspace[data-panel="delegation"] #task-panel,
   .workspace[data-panel="delegation"] #monitor-assembly { display: none; }
-  .side-panel { min-height: 60vh; }
+
+  .side-panel {
+    width: 100%;
+    max-width: 680px;
+    height: auto;
+    max-height: calc(100dvh - 160px);
+  }
+  #task-panel { border-radius: 12px; border-left-width: 18px; padding: 16px 16px 16px 18px; }
+  #delegation-panel { border-radius: 12px; border-right-width: 18px; padding: 16px 18px 16px 16px; }
+
+  #monitor-assembly { width: 100%; max-width: 800px; min-width: unset; }
+  #monitor { height: auto; min-height: calc(100dvh - 180px); padding: 10px 10px 20px; }
+  .stand-neck, .stand-base { display: none; }
   .mobile-nav { display: flex; }
 }
 
 /* --- Mobile (<768px) --- */
 @media (max-width: 767px) {
-  .mac-app-header { padding: 10px 14px; }
-  .mac-app-title { font-size: 14px; }
-  .mac-app-subtitle { font-size: 10px; }
+  .workspace { padding: 60px 12px 72px; }
+  .side-panel { max-height: calc(100dvh - 140px); }
+  #monitor { min-height: calc(100dvh - 160px); padding: 8px 8px 16px; }
   .month-label { font-size: 0.78em; padding: 6px 10px; }
   .tab { padding: 6px 12px; font-size: 0.75em; }
   .calendar-header { font-size: 0.65em; grid-template-columns: 55px repeat(5, 1fr); }
