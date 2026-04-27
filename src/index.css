@@ -255,7 +255,9 @@ body, html {
 .form-group textarea { resize: vertical; min-height: 60px; }
 .section-title { grid-column: span 2; font-size: 0.85em; font-weight: 700; color: var(--ui-text-main); border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 10px; margin-bottom: -5px; }
 
-.modal-footer { padding: 15px 25px; border-top: 1px solid #eee; background: #fafafa; display: flex; justify-content: flex-end; border-radius: 0 0 12px 12px; }
+.modal-footer { padding: 15px 25px; border-top: 1px solid #eee; background: #fafafa; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 12px 12px; }
+.btn-delete { padding: 10px 20px; background: #e74c3c; border: none; color: white; font-weight: 600; cursor: pointer; border-radius: 6px; font-size: 0.9em; transition: 0.2s; }
+.btn-delete:hover { background: #c0392b; }
 .btn-save { padding: 10px 20px; background: var(--ui-accent); border: none; color: white; font-weight: 600; cursor: pointer; border-radius: 6px; font-size: 0.9em; transition: 0.2s; }
 .btn-save:hover { background: #076ebf; }
 

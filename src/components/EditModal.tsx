@@ -111,6 +111,7 @@ interface EditModalProps {
   users: MacUser[];
   onClose: () => void;
   onSave: (task: TaskData) => void;
+  onDelete?: (taskId: string) => void;
 }
 
 const defaultTask: TaskData = {
@@ -136,7 +137,7 @@ const defaultTask: TaskData = {
   location: 'notebook',
 };
 
-const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser, users, onClose, onSave }) => {
+const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser, users, onClose, onSave, onDelete }) => {
   const [form, setForm] = useState<TaskData>(defaultTask);
 
   useEffect(() => {
@@ -349,6 +350,19 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
           </div>
         </div>
         <div className="modal-footer">
+          {!isNew && onDelete && (
+            <button
+              className="btn-delete"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete this task?')) {
+                  onDelete(form.id);
+                  onClose();
+                }
+              }}
+            >
+              Delete Task
+            </button>
+          )}
           <button className="btn-save" onClick={handleSave}>Save Task Data</button>
         </div>
       </div>
