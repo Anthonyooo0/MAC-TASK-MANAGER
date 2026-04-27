@@ -528,6 +528,31 @@ const App: React.FC = () => {
     }
   }, [persistTask, syncTaskToOutlook]);
 
+  // Handle Teams adaptive card deep links: ?action=accept|decline&taskId=...
+  // Fires once tasks are loaded so we can find the referenced task.
+  const deepLinkHandledRef = useRef(false);
+  useEffect(() => {
+    if (!tasksLoaded || deepLinkHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const targetTaskId = params.get('taskId');
+    if (!targetTaskId) return;
+
+    deepLinkHandledRef.current = true;
+
+    if (action === 'accept') {
+      handleAcceptDelegation(targetTaskId);
+    } else if (action === 'decline') {
+      handleDeclineDelegation(targetTaskId);
+    } else {
+      handleEditTask(targetTaskId);
+    }
+
+    // Strip query params so a refresh doesn't re-run the action
+    const cleanUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, '', cleanUrl);
+  }, [tasksLoaded, handleAcceptDelegation, handleDeclineDelegation, handleEditTask]);
+
   const editingTask = editingTaskId ? tasks.find(t => t.id === editingTaskId) || null : null;
 
   if (!msalReady) {

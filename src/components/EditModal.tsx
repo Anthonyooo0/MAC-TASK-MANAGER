@@ -173,6 +173,7 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
 
     if (delegateChanged && finalTask.delegated) {
       const assignee = users.find(u => u.email === finalTask.delegated);
+      const delegatedTaskId = 'task-' + Date.now() + '-delegated';
 
       // Create task in the assignee's task list via API
       try {
@@ -183,7 +184,7 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
             'x-user-email': finalTask.delegated,
           },
           body: JSON.stringify({
-            id: 'task-' + Date.now() + '-delegated',
+            id: delegatedTaskId,
             title: finalTask.title,
             category: finalTask.category,
             priority: finalTask.priority,
@@ -204,25 +205,38 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
         console.warn('Failed to create task for assignee:', err);
       }
 
-      // Send email notification
+      // Send notifications (email + Teams adaptive card) — production only
       if (window.location.hostname !== 'localhost') {
         try {
-          const { sendDelegationEmail } = await import('../graphService');
+          const { sendDelegationEmail, sendTeamsDelegationCard } = await import('../graphService');
           const msalModule = await import('@azure/msal-browser');
           const { msalConfig } = await import('../authConfig');
 
           const instance = new msalModule.PublicClientApplication(msalConfig);
           await instance.initialize();
 
-          await sendDelegationEmail(
-            instance,
-            finalTask.delegated,
-            assignee?.displayName || '',
-            finalTask.title,
-            currentUser,
-          );
+          // Fire both in parallel — email + Teams card
+          await Promise.allSettled([
+            sendDelegationEmail(
+              instance,
+              finalTask.delegated,
+              assignee?.displayName || '',
+              finalTask.title,
+              currentUser,
+            ),
+            sendTeamsDelegationCard(instance, finalTask.delegated, {
+              taskId: delegatedTaskId,
+              taskTitle: finalTask.title,
+              toName: assignee?.displayName || finalTask.delegated.split('@')[0],
+              assignedBy: currentUser,
+              priority: finalTask.priority,
+              due: finalTask.due,
+              category: finalTask.category,
+              duration: finalTask.duration,
+            }),
+          ]);
         } catch (err) {
-          console.warn('Failed to send notification:', err);
+          console.warn('Failed to send notifications:', err);
         }
       }
     }

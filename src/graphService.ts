@@ -340,3 +340,247 @@ export async function sendDelegationEmail(
     console.warn("Send mail error:", response.status, await response.text());
   }
 }
+
+// === Teams adaptive card delegation ============================
+const APP_BASE_URL = 'https://agreeable-rock-082a9c91e.6.azurestaticapps.net';
+
+/** Get the signed-in user's Graph object id (the GUID). */
+async function getMyUserId(instance: IPublicClientApplication): Promise<string | null> {
+  try {
+    const token = await getAccessToken(instance);
+    const res = await fetch('https://graph.microsoft.com/v1.0/me?$select=id', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.id || null;
+  } catch (err) {
+    console.warn('getMyUserId failed', err);
+    return null;
+  }
+}
+
+/** Resolve a UPN/email to the user's Graph object id. */
+async function getUserIdByEmail(instance: IPublicClientApplication, email: string): Promise<string | null> {
+  try {
+    const token = await getAccessToken(instance);
+    const res = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(email)}?$select=id`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.id || null;
+  } catch (err) {
+    console.warn('getUserIdByEmail failed', err);
+    return null;
+  }
+}
+
+/**
+ * Find or create a 1:1 Teams chat between the signed-in user and the assignee.
+ * Returns the chat id.
+ */
+async function getOrCreateOneOnOneChat(
+  instance: IPublicClientApplication,
+  myUserId: string,
+  assigneeUserId: string,
+): Promise<string | null> {
+  try {
+    const token = await getAccessToken(instance);
+    const payload = {
+      chatType: 'oneOnOne',
+      members: [
+        {
+          '@odata.type': '#microsoft.graph.aadUserConversationMember',
+          roles: ['owner'],
+          'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${myUserId}')`,
+        },
+        {
+          '@odata.type': '#microsoft.graph.aadUserConversationMember',
+          roles: ['owner'],
+          'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${assigneeUserId}')`,
+        },
+      ],
+    };
+    const res = await fetch('https://graph.microsoft.com/v1.0/chats', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      console.warn('Create chat failed', res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return data.id || null;
+  } catch (err) {
+    console.warn('getOrCreateOneOnOneChat error', err);
+    return null;
+  }
+}
+
+/**
+ * Build the Adaptive Card payload describing a delegated task.
+ * Buttons deep-link back to the app with action=accept|decline + the task id.
+ */
+function buildDelegationCard(opts: {
+  taskId: string;
+  taskTitle: string;
+  toName: string;
+  assignedBy: string;
+  priority: number;
+  due?: string;
+  category: string;
+  duration?: string;
+}) {
+  const priorityLabel = opts.priority === 3 ? 'High' : opts.priority === 2 ? 'Medium' : 'Low';
+  const priorityColor = opts.priority === 3 ? 'attention' : opts.priority === 2 ? 'warning' : 'good';
+  const categoryLabel = opts.category.charAt(0).toUpperCase() + opts.category.slice(1);
+
+  const acceptUrl = `${APP_BASE_URL}/?action=accept&taskId=${encodeURIComponent(opts.taskId)}`;
+  const declineUrl = `${APP_BASE_URL}/?action=decline&taskId=${encodeURIComponent(opts.taskId)}`;
+  const openUrl = `${APP_BASE_URL}/?taskId=${encodeURIComponent(opts.taskId)}`;
+
+  return {
+    type: 'AdaptiveCard',
+    $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+    version: '1.4',
+    body: [
+      {
+        type: 'TextBlock',
+        text: 'MAC Task Manager',
+        wrap: true,
+        weight: 'Bolder',
+        color: 'Accent',
+        size: 'Small',
+        spacing: 'None',
+      },
+      {
+        type: 'TextBlock',
+        text: `New task assigned by ${opts.assignedBy}`,
+        wrap: true,
+        weight: 'Bolder',
+        size: 'Medium',
+        spacing: 'Small',
+      },
+      {
+        type: 'Container',
+        style: 'emphasis',
+        bleed: true,
+        items: [
+          {
+            type: 'TextBlock',
+            text: opts.taskTitle,
+            wrap: true,
+            weight: 'Bolder',
+            size: 'Large',
+          },
+        ],
+      },
+      {
+        type: 'FactSet',
+        facts: [
+          { title: 'Priority', value: priorityLabel },
+          { title: 'Category', value: categoryLabel },
+          ...(opts.duration ? [{ title: 'Est. Duration', value: opts.duration }] : []),
+          ...(opts.due ? [{ title: 'Due', value: opts.due }] : []),
+        ],
+      },
+      {
+        type: 'TextBlock',
+        text: `Hi ${opts.toName.split(' ')[0] || 'there'} — please review and respond.`,
+        wrap: true,
+        size: 'Small',
+        color: priorityColor,
+        isSubtle: true,
+      },
+    ],
+    actions: [
+      {
+        type: 'Action.OpenUrl',
+        title: '✓ Accept',
+        url: acceptUrl,
+        style: 'positive',
+      },
+      {
+        type: 'Action.OpenUrl',
+        title: '✕ Decline',
+        url: declineUrl,
+        style: 'destructive',
+      },
+      {
+        type: 'Action.OpenUrl',
+        title: 'Open in Task Manager',
+        url: openUrl,
+      },
+    ],
+  };
+}
+
+/**
+ * Send a delegation adaptive card to the assignee in a 1:1 Teams chat.
+ * Best-effort: silently logs and continues on failure (the email already went out).
+ */
+export async function sendTeamsDelegationCard(
+  instance: IPublicClientApplication,
+  assigneeEmail: string,
+  cardData: {
+    taskId: string;
+    taskTitle: string;
+    toName: string;
+    assignedBy: string;
+    priority: number;
+    due?: string;
+    category: string;
+    duration?: string;
+  },
+): Promise<boolean> {
+  try {
+    const [myId, theirId] = await Promise.all([
+      getMyUserId(instance),
+      getUserIdByEmail(instance, assigneeEmail),
+    ]);
+    if (!myId || !theirId) {
+      console.warn('Could not resolve user ids for Teams chat', { myId, theirId });
+      return false;
+    }
+
+    const chatId = await getOrCreateOneOnOneChat(instance, myId, theirId);
+    if (!chatId) return false;
+
+    const card = buildDelegationCard(cardData);
+    const token = await getAccessToken(instance);
+
+    const messagePayload = {
+      body: {
+        contentType: 'html',
+        content: `<attachment id="card-1"></attachment>`,
+      },
+      attachments: [
+        {
+          id: 'card-1',
+          contentType: 'application/vnd.microsoft.card.adaptive',
+          contentUrl: null,
+          content: JSON.stringify(card),
+          name: null,
+          thumbnailUrl: null,
+        },
+      ],
+    };
+
+    const res = await fetch(`https://graph.microsoft.com/v1.0/chats/${chatId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(messagePayload),
+    });
+
+    if (!res.ok) {
+      console.warn('Send Teams card failed', res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('sendTeamsDelegationCard error', err);
+    return false;
+  }
+}
