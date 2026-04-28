@@ -85,6 +85,13 @@ body, html {
 }
 .btn-add-task:hover { background: #076ebf; transform: translateY(-1px); }
 
+.btn-delete-all {
+  background: transparent; color: #c0392b; border: 1px solid #f5c0bb;
+  padding: 6px 8px; border-radius: 6px; font-family: 'DM Sans', sans-serif;
+  font-weight: 600; font-size: 0.78em; cursor: pointer; transition: 0.15s;
+}
+.btn-delete-all:hover { background: #fdecea; border-color: #e74c3c; color: #c0392b; }
+
 .sort-controls { display: flex; align-items: center; justify-content: space-between; }
 .sort-controls label { font-size: 0.75em; font-weight: 600; color: var(--ui-text-muted); }
 .sort-controls select {

@@ -584,3 +584,53 @@ export async function sendTeamsDelegationCard(
     return false;
   }
 }
+
+/**
+ * Send a follow-up confirmation message into the 1:1 chat between the
+ * signed-in user and another user. Used when assignee accepts/declines
+ * a delegated task to notify the original sender.
+ */
+export async function sendTeamsConfirmation(
+  instance: IPublicClientApplication,
+  otherUserEmail: string,
+  taskTitle: string,
+  outcome: 'accepted' | 'declined',
+  fromName: string,
+): Promise<boolean> {
+  try {
+    const [myId, theirId] = await Promise.all([
+      getMyUserId(instance),
+      getUserIdByEmail(instance, otherUserEmail),
+    ]);
+    if (!myId || !theirId) return false;
+
+    const chatId = await getOrCreateOneOnOneChat(instance, myId, theirId);
+    if (!chatId) return false;
+
+    const token = await getAccessToken(instance);
+    const isAccept = outcome === 'accepted';
+    const icon = isAccept ? '✅' : '❌';
+    const verb = isAccept ? 'accepted' : 'declined';
+    const color = isAccept ? '#27ae60' : '#e74c3c';
+
+    const html = `<p><strong style="color:${color}">${icon} ${fromName} ${verb} the task</strong></p><blockquote>${escapeHtml(taskTitle)}</blockquote>`;
+
+    const res = await fetch(`https://graph.microsoft.com/v1.0/chats/${chatId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: { contentType: 'html', content: html } }),
+    });
+    if (!res.ok) {
+      console.warn('sendTeamsConfirmation failed', res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('sendTeamsConfirmation error', err);
+    return false;
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}

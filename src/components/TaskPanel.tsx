@@ -14,11 +14,12 @@ interface TaskPanelProps {
   onAcceptDelegation: (taskId: string) => void;
   onDeclineDelegation: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
+  onDeleteAll: () => void;
 }
 
 const TaskPanel: React.FC<TaskPanelProps> = ({
   tasks, ghostTaskIds, sortMode, users, onSortChange, onAddTask, onEditTask, onDrop,
-  onAcceptDelegation, onDeclineDelegation, onDeleteTask
+  onAcceptDelegation, onDeclineDelegation, onDeleteTask, onDeleteAll
 }) => {
   const [isHovering, setIsHovering] = React.useState(false);
 
@@ -76,6 +77,18 @@ const TaskPanel: React.FC<TaskPanelProps> = ({
             <option value="source">Source (A - Z)</option>
           </select>
         </div>
+        {tasks.length > 0 && (
+          <button
+            className="btn-delete-all"
+            onClick={() => {
+              if (window.confirm(`Delete all ${tasks.length} tasks? This cannot be undone.`)) {
+                onDeleteAll();
+              }
+            }}
+          >
+            Delete All Tasks
+          </button>
+        )}
       </div>
 
       <div

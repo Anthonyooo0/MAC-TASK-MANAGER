@@ -381,17 +381,45 @@ const App: React.FC = () => {
     }
   }, [persistTask, syncTaskToOutlook]);
 
+  // Helper: notify the original sender via Teams that the task was accepted/declined
+  const notifySenderViaTeams = useCallback(async (
+    senderEmail: string,
+    taskTitle: string,
+    outcome: 'accepted' | 'declined',
+  ) => {
+    if (isDev) return;
+    try {
+      const { sendTeamsConfirmation } = await import('./graphService');
+      const instance = await getMsal();
+      const myName = users.find(u => u.email === currentUserRef.current)?.displayName
+        || currentUserRef.current
+        || 'A teammate';
+      await sendTeamsConfirmation(instance, senderEmail, taskTitle, outcome, myName);
+    } catch (err) {
+      console.warn('notifySenderViaTeams failed', err);
+    }
+  }, [getMsal, users]);
+
   // Accept a pending delegated task
   const handleAcceptDelegation = useCallback((taskId: string) => {
+    let acceptedTask: TaskData | null = null;
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         const updated = { ...t, pendingDelegation: false };
+        acceptedTask = updated;
         persistTask(updated);
         return updated;
       }
       return t;
     }));
-  }, [persistTask]);
+    // Send Teams confirmation back to the sender
+    if (acceptedTask) {
+      const snap = acceptedTask as TaskData;
+      if (snap.delegatedBy) {
+        notifySenderViaTeams(snap.delegatedBy, snap.title, 'accepted');
+      }
+    }
+  }, [persistTask, notifySenderViaTeams]);
 
   // Decline a pending delegated task — return it to the original sender
   const handleDeclineDelegation = useCallback((taskId: string) => {
@@ -431,9 +459,34 @@ const App: React.FC = () => {
             delegatedBy: currentUser,
           }),
         }).catch(err => console.warn('Failed to return task to sender:', err));
+
+        // Send Teams confirmation back to the sender
+        notifySenderViaTeams(declinedTask.delegatedBy, declinedTask.title, 'declined');
       }
     }
-  }, [currentUser, tasks]);
+  }, [currentUser, tasks, notifySenderViaTeams]);
+
+  // Delete every task belonging to the current user (and their Outlook events)
+  const handleDeleteAllTasks = useCallback(() => {
+    const tasksToDelete = [...tasks];
+    setTasks([]);
+
+    if (isDev || !currentUser) return;
+
+    // Fire DELETEs in parallel; ignore individual failures
+    tasksToDelete.forEach(t => {
+      fetch(`/api/tasks/${t.id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-email': currentUser },
+      }).catch(err => console.warn('Failed to delete task:', t.id, err));
+
+      if (t.outlookEventId) {
+        import('./graphService').then(({ deleteTaskEvent }) => {
+          getMsal().then(instance => deleteTaskEvent(instance, t.outlookEventId!));
+        });
+      }
+    });
+  }, [tasks, currentUser, getMsal]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
     const target = tasks.find(t => t.id === taskId);
@@ -605,6 +658,7 @@ const App: React.FC = () => {
           onAcceptDelegation={handleAcceptDelegation}
           onDeclineDelegation={handleDeclineDelegation}
           onDeleteTask={handleDeleteTask}
+          onDeleteAll={handleDeleteAllTasks}
         />
 
         <CalendarMonitor
