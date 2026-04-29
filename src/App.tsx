@@ -466,10 +466,12 @@ const App: React.FC = () => {
     }
   }, [currentUser, tasks, notifySenderViaTeams]);
 
-  // Delete every task belonging to the current user (and their Outlook events)
+  // Delete every task belonging to the current user EXCEPT ones already
+  // scheduled on the calendar (those represent committed time blocks).
   const handleDeleteAllTasks = useCallback(() => {
-    const tasksToDelete = [...tasks];
-    setTasks([]);
+    const tasksToDelete = tasks.filter(t => t.location !== 'calendar');
+    const tasksToKeep   = tasks.filter(t => t.location === 'calendar');
+    setTasks(tasksToKeep);
 
     if (isDev || !currentUser) return;
 
