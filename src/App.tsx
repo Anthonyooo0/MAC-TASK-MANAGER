@@ -13,6 +13,33 @@ import { getWeekStartDate } from './utils';
 const isDev = window.location.hostname === 'localhost';
 const ADMIN_EMAIL = 'anthony.jimenez@macproducts.net';
 
+// Cross-tab dedupe: once a delegation is accepted/declined for a given taskId,
+// we record it in localStorage so subsequent clicks (e.g. user double-clicks the
+// Teams adaptive card button and opens 5 tabs in a row) become no-ops.
+const PROCESSED_DELEGATIONS_KEY = 'mac-processed-delegations';
+function wasDelegationProcessed(taskId: string): boolean {
+  try {
+    const raw = localStorage.getItem(PROCESSED_DELEGATIONS_KEY);
+    if (!raw) return false;
+    const list = JSON.parse(raw);
+    return Array.isArray(list) && list.includes(taskId);
+  } catch {
+    return false;
+  }
+}
+function markDelegationProcessed(taskId: string): void {
+  try {
+    const raw = localStorage.getItem(PROCESSED_DELEGATIONS_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(taskId)) {
+      list.push(taskId);
+      // cap so the array doesn't grow forever
+      const trimmed = list.slice(-200);
+      localStorage.setItem(PROCESSED_DELEGATIONS_KEY, JSON.stringify(trimmed));
+    }
+  } catch { /* ignore */ }
+}
+
 // Sample meetings for local dev
 const devMeetings: CalendarMeeting[] = [
   { id: 'dev-1', title: 'Weekly Management Call', day: 0, startSlot: 0, slots: [0], duration: '1h', timeLabel: '8:00 AM - 9:00 AM', topPercent: 0, heightPercent: 100, location: 'Conference Room A', organizer: 'Edward Russnow', myResponse: 'accepted', isOnline: true, attendees: [
@@ -421,6 +448,13 @@ const App: React.FC = () => {
 
   // Accept a pending delegated task
   const handleAcceptDelegation = useCallback((taskId: string) => {
+    // Guard against double-clicks from the Teams card opening multiple tabs
+    if (wasDelegationProcessed(taskId)) {
+      console.info('Accept ignored — already processed for', taskId);
+      return;
+    }
+    markDelegationProcessed(taskId);
+
     let acceptedTask: TaskData | null = null;
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
@@ -442,6 +476,13 @@ const App: React.FC = () => {
 
   // Decline a pending delegated task — return it to the original sender
   const handleDeclineDelegation = useCallback((taskId: string) => {
+    // Guard against double-clicks from the Teams card opening multiple tabs
+    if (wasDelegationProcessed(taskId)) {
+      console.info('Decline ignored — already processed for', taskId);
+      return;
+    }
+    markDelegationProcessed(taskId);
+
     const declinedTask = tasks.find(t => t.id === taskId);
     setTasks(prev => prev.filter(t => t.id !== taskId));
 
