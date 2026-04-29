@@ -8,6 +8,52 @@ try {
   return;
 }
 
+async function logChange(pool, userEmail, taskId, taskTitle, action, changes) {
+  try {
+    await pool.request()
+      .input('user_email', sql.NVarChar, userEmail || '')
+      .input('task_id', sql.NVarChar, taskId || '')
+      .input('task_title', sql.NVarChar, (taskTitle || '').slice(0, 500))
+      .input('action', sql.NVarChar, action || '')
+      .input('changes', sql.NVarChar, changes || '')
+      .query('INSERT INTO changelog (user_email, task_id, task_title, action, changes) VALUES (@user_email, @task_id, @task_title, @action, @changes)');
+  } catch (err) {
+    // logging failure shouldn't break the request — swallow silently
+    console.warn('changelog insert failed', err && err.message);
+  }
+}
+
+function diffTask(oldT, newT) {
+  if (!oldT) return '';
+  const fields = [
+    ['title', 'Title'], ['category', 'Category'], ['priority', 'Priority'],
+    ['status', 'Status'], ['duration', 'Duration'], ['source', 'Source'],
+    ['delegated', 'Delegated To'], ['due', 'Due'], ['location', 'Location'],
+    ['notes', 'Notes'], ['pending_delegation', 'Pending'],
+  ];
+  const parts = [];
+  for (const [k, label] of fields) {
+    const ov = oldT[k] ?? '';
+    const nvRaw = newT[k] ?? (newT[mapNew(k)] ?? '');
+    const nv = nvRaw === null ? '' : nvRaw;
+    if (String(ov) !== String(nv)) {
+      parts.push(`${label}: "${ov}" → "${nv}"`);
+    }
+  }
+  // Calendar position (compare individual coords)
+  const oldCal = oldT.calendar_week != null ? `W${oldT.calendar_week} D${oldT.calendar_day} S${oldT.calendar_slot}` : 'unscheduled';
+  const newCal = newT.calendarPosition?.week != null ? `W${newT.calendarPosition.week} D${newT.calendarPosition.day} S${newT.calendarPosition.slot}` : 'unscheduled';
+  if (oldCal !== newCal) parts.push(`Calendar: ${oldCal} → ${newCal}`);
+  return parts.join(' | ');
+}
+function mapNew(dbCol) {
+  // map db column names back to JS field names where they differ
+  if (dbCol === 'pending_delegation') return 'pendingDelegation';
+  if (dbCol === 'start_time') return 'startTime';
+  if (dbCol === 'end_time') return 'endTime';
+  return dbCol;
+}
+
 module.exports = async function (context, req) {
   try {
     const pool = await getPool();
@@ -60,10 +106,23 @@ module.exports = async function (context, req) {
         .input('outlook_event_id', sql.NVarChar, t.outlookEventId || '')
         .query(`INSERT INTO tasks (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by, outlook_event_id)
                 VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by, @outlook_event_id)`);
+
+      const createAction = t.pendingDelegation ? 'Received delegated task' : 'Created task';
+      const createDetails = t.source ? `Source: ${t.source}` : '';
+      await logChange(pool, userEmail, t.id, t.title, createAction, createDetails);
+
       context.res = { status: 201, body: { success: true } };
 
     } else if (method === 'PUT' && id) {
       const t = req.body;
+
+      // Fetch the existing row so we can compute a diff for the audit log
+      const existing = await pool.request()
+        .input('id', sql.NVarChar, id)
+        .input('user_email', sql.NVarChar, userEmail)
+        .query('SELECT TOP 1 * FROM tasks WHERE id=@id AND user_email=@user_email');
+      const oldRow = existing.recordset[0] || null;
+
       const request = pool.request()
         .input('id', sql.NVarChar, id)
         .input('user_email', sql.NVarChar, userEmail)
@@ -106,13 +165,40 @@ module.exports = async function (context, req) {
           INSERT (id, user_email, title, category, priority, status, duration, start_time, end_time, source, delegated, energy, requester, received, due, start_date, parent, tags, waiting, nextaction, links, notes, location, calendar_week, calendar_day, calendar_slot, pending_delegation, delegated_by, outlook_event_id)
           VALUES (@id, @user_email, @title, @category, @priority, @status, @duration, @start_time, @end_time, @source, @delegated, @energy, @requester, @received, @due, @start_date, @parent, @tags, @waiting, @nextaction, @links, @notes, @location, @calendar_week, @calendar_day, @calendar_slot, @pending_delegation, @delegated_by, @outlook_event_id);
       `);
+
+      // Log a meaningful action label based on what changed
+      let action = 'Updated task';
+      if (!oldRow) {
+        action = 'Created task';
+      } else if (!oldRow.pending_delegation && t.pendingDelegation) {
+        action = 'Marked as pending delegation';
+      } else if (oldRow.pending_delegation && !t.pendingDelegation) {
+        action = 'Accepted delegated task';
+      } else if (oldRow.status !== t.status) {
+        action = `Changed status to ${t.status}`;
+      } else if ((oldRow.location || '') !== (t.location || '')) {
+        action = `Moved to ${t.location}`;
+      }
+      const details = diffTask(oldRow, t);
+      await logChange(pool, userEmail, id, t.title, action, details);
+
       context.res = { status: 200, body: { success: true } };
 
     } else if (method === 'DELETE' && id) {
+      // Capture the title for the log entry before we delete
+      const existing = await pool.request()
+        .input('id', sql.NVarChar, id)
+        .input('user_email', sql.NVarChar, userEmail)
+        .query('SELECT TOP 1 title FROM tasks WHERE id=@id AND user_email=@user_email');
+      const oldTitle = existing.recordset[0]?.title || '(unknown)';
+
       await pool.request()
         .input('id', sql.NVarChar, id)
         .input('user_email', sql.NVarChar, userEmail)
         .query('DELETE FROM tasks WHERE id=@id AND user_email=@user_email');
+
+      await logChange(pool, userEmail, id, oldTitle, 'Deleted task', '');
+
       context.res = { status: 200, body: { success: true } };
 
     } else {

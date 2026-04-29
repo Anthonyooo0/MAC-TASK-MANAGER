@@ -47,6 +47,37 @@ body, html {
 .mac-app-title { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
 .mac-app-subtitle { margin: 2px 0 0 0; font-size: 11px; color: #a8c0e0; font-family: 'Space Mono', monospace; text-transform: lowercase; }
 .mac-app-version { font-family: 'Space Mono', monospace; font-size: 11px; color: #a8c0e0; letter-spacing: 1px; }
+.mac-app-header-right { display: flex; align-items: center; gap: 12px; }
+.mac-admin-btn {
+  background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.25);
+  padding: 6px 12px; border-radius: 6px; font-family: 'DM Sans', sans-serif;
+  font-weight: 600; font-size: 12px; cursor: pointer; letter-spacing: 0.3px;
+  transition: 0.15s;
+}
+.mac-admin-btn:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.4); }
+
+/* === Admin Log Modal === */
+.admin-log-modal { width: 1100px !important; max-width: 95vw !important; }
+.admin-log-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.admin-log-table thead th {
+  position: sticky; top: 0; background: #1a365d; color: white;
+  text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; z-index: 1;
+}
+.admin-log-table tbody tr { border-bottom: 1px solid #f0f2f5; transition: background 0.1s; }
+.admin-log-table tbody tr:hover { background: #f7fafc; }
+.admin-log-table td { padding: 8px 14px; vertical-align: top; }
+.admin-log-table .cell-time { font-family: 'Space Mono', monospace; font-size: 10.5px; color: #636e72; white-space: nowrap; }
+.admin-log-table .cell-user { font-weight: 500; color: #1a365d; white-space: nowrap; }
+.admin-log-table .cell-task { color: #2d3436; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-log-table .cell-changes { color: #636e72; font-size: 11px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-log-table .action-badge {
+  display: inline-block; padding: 2px 8px; background: #e2f0fb; color: #0d3b84;
+  border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  white-space: nowrap;
+}
 
 /* === WORKSPACE LAYOUT === */
 .workspace {

@@ -7,9 +7,11 @@ import type { CalendarMeeting } from './components/CalendarMonitor';
 import DelegationPanel from './components/DelegationPanel';
 import EditModal from './components/EditModal';
 import type { MacUser } from './components/EditModal';
+import AdminLogModal from './components/AdminLogModal';
 import { getWeekStartDate } from './utils';
 
 const isDev = window.location.hostname === 'localhost';
+const ADMIN_EMAIL = 'anthony.jimenez@macproducts.net';
 
 // Sample meetings for local dev
 const devMeetings: CalendarMeeting[] = [
@@ -61,6 +63,21 @@ const App: React.FC = () => {
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
+
+  // Log a sign-in event once per session when the user becomes known.
+  const signInLoggedRef = useRef(false);
+  useEffect(() => {
+    if (!currentUser || signInLoggedRef.current || isDev) return;
+    signInLoggedRef.current = true;
+    fetch('/api/changelog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-email': currentUser },
+      body: JSON.stringify({
+        action: 'Signed in',
+        changes: `User-Agent: ${navigator.userAgent.slice(0, 200)}`,
+      }),
+    }).catch(err => console.warn('sign-in log failed', err));
+  }, [currentUser]);
 
   // Load tasks from the database on login (production) or localStorage (dev)
   useEffect(() => {
@@ -224,6 +241,8 @@ const App: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [isNewTask, setIsNewTask] = useState(false);
+  const [adminLogOpen, setAdminLogOpen] = useState(false);
+  const isAdmin = (currentUser || '').toLowerCase() === ADMIN_EMAIL;
 
   // Fetch Outlook calendar events when week changes (production only)
   useEffect(() => {
@@ -643,6 +662,11 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="mac-app-header-right">
+          {isAdmin && (
+            <button className="mac-admin-btn" onClick={() => setAdminLogOpen(true)} title="Admin Activity Log">
+              Admin Log
+            </button>
+          )}
           <span className="mac-app-version">V1.0.0</span>
         </div>
       </header>
@@ -691,6 +715,14 @@ const App: React.FC = () => {
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
       />
+
+      {isAdmin && (
+        <AdminLogModal
+          isOpen={adminLogOpen}
+          currentUser={currentUser}
+          onClose={() => setAdminLogOpen(false)}
+        />
+      )}
 
       {/* Mobile / Tablet Navigation Bar */}
       <nav className="mobile-nav">
