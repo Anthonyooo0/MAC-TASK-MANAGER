@@ -139,6 +139,8 @@ const defaultTask: TaskData = {
 
 const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser, users, onClose, onSave, onDelete }) => {
   const [form, setForm] = useState<TaskData>(defaultTask);
+  const [saving, setSaving] = useState(false);
+  const savingRef = React.useRef(false);
 
   useEffect(() => {
     if (task) {
@@ -146,6 +148,9 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
     } else {
       setForm({ ...defaultTask, id: 'task-' + Date.now() });
     }
+    // Reset save guard whenever the modal is (re)opened
+    savingRef.current = false;
+    setSaving(false);
   }, [task, isOpen]);
 
   const set = (field: keyof TaskData, value: string | number) => {
@@ -153,6 +158,12 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
   };
 
   const handleSave = async () => {
+    // Guard against double/triple-clicks. The ref is checked synchronously
+    // so two click events in the same tick can't both pass.
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+
     let status = form.status;
     let delegated = form.delegated || '';
 
@@ -377,7 +388,14 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, task, isNew, currentUser,
               Delete Task
             </button>
           )}
-          <button className="btn-save" onClick={handleSave}>Save Task Data</button>
+          <button
+            className="btn-save"
+            onClick={handleSave}
+            disabled={saving}
+            style={saving ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+          >
+            {saving ? 'Saving…' : 'Save Task Data'}
+          </button>
         </div>
       </div>
     </>
